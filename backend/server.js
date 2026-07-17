@@ -87,14 +87,24 @@ app.post('/api/match', upload.fields([
                     // Update the master row with data from small files
                     row[masterDispositionKey] = matchData.disposition;
                     row[masterTimeKey] = matchData.totalTime;
+                    row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
-                    // Update disposition to "Not Found" or track it
-                    row[masterDispositionKey] = "Not Found";
+                    // Update match status to "Not Found"
+                    row['Match Status'] = 'NOT FOUND ❌';
                     notFoundCount++;
                     notFoundList.push(row);
+                } else {
+                    row['Match Status'] = '';
                 }
             }
+
+            // Sort masterData so MATCHED ✅ appears at the top
+            masterData.sort((a, b) => {
+                if (a['Match Status'] === 'MATCHED ✅' && b['Match Status'] !== 'MATCHED ✅') return -1;
+                if (a['Match Status'] !== 'MATCHED ✅' && b['Match Status'] === 'MATCHED ✅') return 1;
+                return 0;
+            });
         }
 
         // Create updated master sheet
