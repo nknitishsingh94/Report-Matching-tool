@@ -19,7 +19,8 @@ function App() {
 
   const handleSmallUpload = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSmallFiles(Array.from(e.target.files));
+      // Append new files to the existing array instead of replacing
+      setSmallFiles(prev => [...prev, ...Array.from(e.target.files)]);
     }
   };
 
