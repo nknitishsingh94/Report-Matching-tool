@@ -150,7 +150,7 @@ function App() {
                     }`}
                     onClick={() => masterInputRef.current?.click()}
                   >
-                    <input type="file" className="hidden" accept=".xlsx, .xls" ref={masterInputRef} onChange={handleMasterUpload} />
+                    <input type="file" className="hidden" accept=".xlsx, .xls, .csv" ref={masterInputRef} onChange={handleMasterUpload} />
                     
                     {masterFile ? (
                       <div className="animate-in zoom-in-95 duration-300 flex flex-col items-center">
@@ -168,7 +168,7 @@ function App() {
                           <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-indigo-500 transition-colors" />
                         </div>
                         <p className="text-sm font-semibold text-gray-700">Drop your Master file here</p>
-                        <p className="text-xs text-gray-500 mt-1">.xlsx, .xls</p>
+                        <p className="text-xs text-gray-500 mt-1">.xlsx, .xls, .csv</p>
                       </div>
                     )}
                   </div>
@@ -191,7 +191,7 @@ function App() {
                     }`}
                     onClick={() => smallInputRef.current?.click()}
                   >
-                    <input type="file" className="hidden" accept=".xlsx, .xls" multiple ref={smallInputRef} onChange={handleSmallUpload} />
+                    <input type="file" className="hidden" accept=".xlsx, .xls, .csv" multiple ref={smallInputRef} onChange={handleSmallUpload} />
                     
                     {smallFiles.length > 0 ? (
                       <div className="animate-in zoom-in-95 duration-300 flex flex-col items-center w-full">
@@ -209,7 +209,7 @@ function App() {
                           <FileSpreadsheet className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
                         </div>
                         <p className="text-sm font-semibold text-gray-700">Drop multiple reports here</p>
-                        <p className="text-xs text-gray-500 mt-1">.xlsx, .xls</p>
+                        <p className="text-xs text-gray-500 mt-1">.xlsx, .xls, .csv</p>
                       </div>
                     )}
                   </div>
