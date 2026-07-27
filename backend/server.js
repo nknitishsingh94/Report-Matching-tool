@@ -26,10 +26,15 @@ app.post('/api/match', upload.fields([
 
         const masterFile = req.files['masterFile'][0];
         const smallFiles = req.files['smallFiles'];
+        const labelsInput = req.body.labels;
+        const labels = Array.isArray(labelsInput) ? labelsInput : [labelsInput];
 
         // Aggregate small files data into a Map
         const callerMap = new Map();
-        for (const file of smallFiles) {
+        for (let i = 0; i < smallFiles.length; i++) {
+            const file = smallFiles[i];
+            const label = labels[i] || `File ${i + 1}`;
+            
             const smallWorkbook = xlsx.read(file.buffer, { type: 'buffer' });
             const smallSheetName = smallWorkbook.SheetNames[0];
             const smallSheet = smallWorkbook.Sheets[smallSheetName];
@@ -53,7 +58,8 @@ app.post('/api/match', upload.fields([
                 if (callerId && callerId !== "undefined") {
                     callerMap.set(callerId, {
                         disposition: row[dispositionKey],
-                        totalTime: row[timeKey]
+                        totalTime: row[timeKey],
+                        label: label
                     });
                 }
             }
@@ -87,6 +93,7 @@ app.post('/api/match', upload.fields([
                     // Update the master row with data from small files
                     row[masterDispositionKey] = matchData.disposition;
                     row[masterTimeKey] = matchData.totalTime;
+                    row['Source Label'] = matchData.label;
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {

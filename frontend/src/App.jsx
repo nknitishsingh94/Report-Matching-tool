@@ -20,7 +20,11 @@ function App() {
   const handleSmallUpload = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       // Append new files to the existing array instead of replacing
-      setSmallFiles(prev => [...prev, ...Array.from(e.target.files)]);
+      const newFiles = Array.from(e.target.files).map(file => ({
+        file,
+        label: file.name.split('.')[0]
+      }));
+      setSmallFiles(prev => [...prev, ...newFiles]);
     }
   };
 
@@ -39,8 +43,9 @@ function App() {
 
     const formData = new FormData();
     formData.append('masterFile', masterFile);
-    smallFiles.forEach(file => {
-      formData.append('smallFiles', file);
+    smallFiles.forEach((item) => {
+      formData.append('smallFiles', item.file);
+      formData.append('labels', item.label);
     });
 
     try {
@@ -184,24 +189,57 @@ function App() {
                   </div>
                   
                   <div 
-                    className={`relative cursor-pointer overflow-hidden border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300 ${
+                    className={`relative overflow-hidden border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all duration-300 ${
                       smallFiles.length > 0 
                         ? 'border-purple-400 bg-purple-50/50 shadow-inner' 
-                        : 'border-gray-200 bg-gray-50/50 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:-translate-y-1'
+                        : 'border-gray-200 bg-gray-50/50 hover:bg-white hover:border-purple-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer'
                     }`}
-                    onClick={() => smallInputRef.current?.click()}
+                    onClick={(e) => {
+                      if (smallFiles.length === 0) smallInputRef.current?.click();
+                    }}
                   >
                     <input type="file" className="hidden" accept=".xlsx, .xls, .csv" multiple ref={smallInputRef} onChange={handleSmallUpload} />
                     
                     {smallFiles.length > 0 ? (
-                      <div className="animate-in zoom-in-95 duration-300 flex flex-col items-center w-full">
-                        <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
-                          <FileText className="w-8 h-8 text-purple-500" />
+                      <div className="animate-in zoom-in-95 duration-300 flex flex-col w-full text-left space-y-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2 mb-2 justify-center">
+                          <FileText className="w-6 h-6 text-purple-500" />
+                          <p className="text-sm font-bold text-gray-900">{smallFiles.length} files selected</p>
                         </div>
-                        <p className="text-sm font-bold text-gray-900">{smallFiles.length} files selected</p>
-                        <p className="text-xs font-medium text-purple-600 mt-1 bg-purple-100/50 px-3 py-1 rounded-full truncate max-w-full">
-                          {smallFiles.map(f => f.name).join(', ')}
-                        </p>
+                        <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
+                          {smallFiles.map((item, index) => (
+                            <div key={index} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-purple-100 shadow-sm">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-500 truncate" title={item.file.name}>{item.file.name}</p>
+                              </div>
+                              <input
+                                type="text"
+                                value={item.label}
+                                onChange={(e) => {
+                                  const newFiles = [...smallFiles];
+                                  newFiles[index].label = e.target.value;
+                                  setSmallFiles(newFiles);
+                                }}
+                                className="text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-purple-400 w-28 sm:w-32"
+                                placeholder="Label"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSmallFiles(smallFiles.filter((_, i) => i !== index))}
+                                className="text-red-400 hover:text-red-600 px-1 font-bold text-lg leading-none"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => smallInputRef.current?.click()}
+                          className="w-full mt-2 py-2 text-sm text-purple-600 bg-white hover:bg-purple-100 rounded-lg font-medium transition-colors border border-purple-200 border-dashed shadow-sm"
+                        >
+                          + Add More Reports
+                        </button>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center">
