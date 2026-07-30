@@ -33,13 +33,25 @@ app.post('/api/match', upload.fields([
         const labelsInput = req.body.labels;
         const labels = Array.isArray(labelsInput) ? labelsInput : [labelsInput];
 
+        const normalizeDate = (val) => {
+            if (!val) return '';
+            if (typeof val === 'number') {
+                // Excel serial date to JS Date
+                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+                return date.toISOString().split('T')[0];
+            }
+            const str = String(val).trim();
+            // Just take the date part before any space or 'T'
+            return str.split(' ')[0].split('T')[0];
+        };
+
         // Aggregate small files data into a Map
         const callerMap = new Map();
         for (let i = 0; i < smallFiles.length; i++) {
             const file = smallFiles[i];
             const label = labels[i] || `File ${i + 1}`;
 
-            const smallWorkbook = xlsx.read(file.buffer, { type: 'buffer' });
+            const smallWorkbook = xlsx.read(file.buffer, { type: 'buffer', cellDates: true });
             const smallSheetName = smallWorkbook.SheetNames[0];
             const smallSheet = smallWorkbook.Sheets[smallSheetName];
             const smallData = xlsx.utils.sheet_to_json(smallSheet, { defval: "" });
@@ -49,6 +61,8 @@ app.post('/api/match', upload.fields([
                 let callerIdKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid');
                 if (!callerIdKey) callerIdKey = Object.keys(row).find(k => k.toLowerCase().includes('caller'));
 
+                let dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date') && !k.toLowerCase().includes('update'));
+
                 let dispositionKey = Object.keys(row).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status'));
                 let timeKey = Object.keys(row).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration'));
 
@@ -56,11 +70,15 @@ app.post('/api/match', upload.fields([
                 if (!callerIdKey) callerIdKey = 'Caller ID';
                 if (!dispositionKey) dispositionKey = 'Disposition';
                 if (!timeKey) timeKey = 'Total Time';
+                if (!dateKey) dateKey = 'Date';
 
-                // We use String() to convert raw numbers to strings, which handles Excel's scientific notation display issues natively for standard phone numbers
                 const callerId = String(row[callerIdKey]).trim();
+                const normDate = normalizeDate(row[dateKey]);
+                
+                const compositeKey = `${callerId}_${normDate}`;
+
                 if (callerId && callerId !== "undefined") {
-                    callerMap.set(callerId, {
+                    callerMap.set(compositeKey, {
                         disposition: row[dispositionKey],
                         totalTime: row[timeKey],
                         label: label
@@ -70,7 +88,7 @@ app.post('/api/match', upload.fields([
         }
 
         // Read master workbook
-        const masterWorkbook = xlsx.read(masterFile.buffer, { type: 'buffer' });
+        const masterWorkbook = xlsx.read(masterFile.buffer, { type: 'buffer', cellDates: true });
         const masterSheetName = masterWorkbook.SheetNames[0];
         const masterSheet = masterWorkbook.Sheets[masterSheetName];
         const masterData = xlsx.utils.sheet_to_json(masterSheet, { defval: "" });
@@ -85,15 +103,20 @@ app.post('/api/match', upload.fields([
             let masterCallerIdKey = Object.keys(firstRow).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid') ||
                 Object.keys(firstRow).find(k => k.toLowerCase().includes('caller')) || 'Caller ID';
 
+            let masterDateKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('date') && !k.toLowerCase().includes('update')) || 'Date';
+
             let masterDispositionKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status')) || 'Disposition';
             let masterTimeKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration')) || 'Total Time';
 
             for (let i = 0; i < masterData.length; i++) {
                 const row = masterData[i];
                 const callerId = String(row[masterCallerIdKey]).trim();
+                const normDate = normalizeDate(row[masterDateKey]);
+                
+                const compositeKey = `${callerId}_${normDate}`;
 
-                if (callerId && callerId !== "undefined" && callerMap.has(callerId)) {
-                    const matchData = callerMap.get(callerId);
+                if (callerId && callerId !== "undefined" && callerMap.has(compositeKey)) {
+                    const matchData = callerMap.get(compositeKey);
                     // Update the master row with data from small files
                     row[masterDispositionKey] = matchData.disposition;
                     row[masterTimeKey] = matchData.totalTime;
