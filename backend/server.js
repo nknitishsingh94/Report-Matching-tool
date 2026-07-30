@@ -19,7 +19,7 @@ const upload = multer({ storage: storage });
 app.post('/api/match', upload.fields([
     { name: 'masterFile', maxCount: 1 },
     { name: 'smallFiles' }
-]), (req, res) => {
+]), async (req, res) => {
     try {
         if (!req.files || !req.files['masterFile']) {
             return res.status(400).json({ error: 'Master file is required.' });
@@ -118,19 +118,57 @@ app.post('/api/match', upload.fields([
             });
         }
 
-        // Create updated master sheet
-        const updatedMasterSheet = xlsx.utils.json_to_sheet(masterData);
-        const newWorkbook = xlsx.utils.book_new();
-        xlsx.utils.book_append_sheet(newWorkbook, updatedMasterSheet, 'Updated Master');
+        // Create updated master sheet using exceljs
+        const ExcelJS = require('exceljs');
+        const newWorkbook = new ExcelJS.Workbook();
+        const updatedMasterSheet = newWorkbook.addWorksheet('Updated Master');
 
-        // Create Not Found sheet for rows that didn't match
+        if (masterData.length > 0) {
+            const headers = Object.keys(masterData[0]);
+            updatedMasterSheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
+
+            masterData.forEach((rowData) => {
+                const row = updatedMasterSheet.addRow(rowData);
+                
+                // Highlight row based on Match Status
+                if (rowData['Match Status'] === 'MATCHED ✅') {
+                    row.eachCell((cell) => {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFC6EFCE' } // Light green
+                        };
+                        cell.font = { color: { argb: 'FF006100' } }; // Dark green text
+                    });
+                } else if (rowData['Match Status'] === 'NOT FOUND ❌') {
+                    row.eachCell((cell) => {
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FFFFC7CE' } // Light red
+                        };
+                        cell.font = { color: { argb: 'FF9C0006' } }; // Dark red text
+                    });
+                }
+            });
+            
+            // Make header bold
+            updatedMasterSheet.getRow(1).font = { bold: true };
+        }
+
+        // Create Not Found sheet
         if (notFoundList.length > 0) {
-            const notFoundSheet = xlsx.utils.json_to_sheet(notFoundList);
-            xlsx.utils.book_append_sheet(newWorkbook, notFoundSheet, 'Not Found');
+            const notFoundSheet = newWorkbook.addWorksheet('Not Found');
+            const headers = Object.keys(notFoundList[0]);
+            notFoundSheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
+            notFoundList.forEach(rowData => {
+                notFoundSheet.addRow(rowData);
+            });
+            notFoundSheet.getRow(1).font = { bold: true };
         }
 
         // Generate buffer
-        const excelBuffer = xlsx.write(newWorkbook, { type: 'buffer', bookType: 'xlsx' });
+        const excelBuffer = await newWorkbook.xlsx.writeBuffer();
 
         // Send response with base64 encoded file and stats
         res.json({
