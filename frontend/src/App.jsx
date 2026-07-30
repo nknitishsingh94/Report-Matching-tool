@@ -49,7 +49,8 @@ function App() {
     });
 
     try {
-      const response = await fetch('/api/match', {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/match`, {
         method: 'POST',
         body: formData,
       });
