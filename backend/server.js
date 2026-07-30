@@ -8,6 +8,10 @@ const port = 3001;
 
 app.use(cors());
 
+app.get('/', (req, res) => {
+    res.send('Report Reconciliation API is running!');
+});
+
 // Configure multer for in-memory file storage
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
@@ -149,3 +153,5 @@ app.post('/api/match', upload.fields([
 app.listen(port, () => {
     console.log(`Backend server running on http://localhost:${port}`);
 });
+
+module.exports = app;
