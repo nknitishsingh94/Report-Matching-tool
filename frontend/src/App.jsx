@@ -49,7 +49,7 @@ function App() {
     });
 
     try {
-      const response = await fetch('http://localhost:3001/api/match', {
+      const response = await fetch('/api/match', {
         method: 'POST',
         body: formData,
       });
