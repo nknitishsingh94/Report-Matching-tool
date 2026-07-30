@@ -38,7 +38,7 @@ app.post('/api/match', upload.fields([
         for (let i = 0; i < smallFiles.length; i++) {
             const file = smallFiles[i];
             const label = labels[i] || `File ${i + 1}`;
-            
+
             const smallWorkbook = xlsx.read(file.buffer, { type: 'buffer' });
             const smallSheetName = smallWorkbook.SheetNames[0];
             const smallSheet = smallWorkbook.Sheets[smallSheetName];
@@ -48,10 +48,10 @@ app.post('/api/match', upload.fields([
                 // Heuristic column matching
                 let callerIdKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid');
                 if (!callerIdKey) callerIdKey = Object.keys(row).find(k => k.toLowerCase().includes('caller'));
-                
+
                 let dispositionKey = Object.keys(row).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status'));
                 let timeKey = Object.keys(row).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration'));
-                
+
                 // Fallbacks if columns are not found exactly
                 if (!callerIdKey) callerIdKey = 'Caller ID';
                 if (!dispositionKey) dispositionKey = 'Disposition';
@@ -82,16 +82,16 @@ app.post('/api/match', upload.fields([
         // Match with master data
         if (masterData.length > 0) {
             const firstRow = masterData[0];
-            let masterCallerIdKey = Object.keys(firstRow).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid') || 
-                                    Object.keys(firstRow).find(k => k.toLowerCase().includes('caller')) || 'Caller ID';
-            
+            let masterCallerIdKey = Object.keys(firstRow).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid') ||
+                Object.keys(firstRow).find(k => k.toLowerCase().includes('caller')) || 'Caller ID';
+
             let masterDispositionKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status')) || 'Disposition';
             let masterTimeKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration')) || 'Total Time';
 
             for (let i = 0; i < masterData.length; i++) {
                 const row = masterData[i];
                 const callerId = String(row[masterCallerIdKey]).trim();
-                
+
                 if (callerId && callerId !== "undefined" && callerMap.has(callerId)) {
                     const matchData = callerMap.get(callerId);
                     // Update the master row with data from small files
