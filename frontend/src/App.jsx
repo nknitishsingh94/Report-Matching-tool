@@ -315,73 +315,72 @@ function App() {
                 </div>
               </div>
 
-              {/* Small Files Stats */}
-              {result.stats.smallFilesStats && result.stats.smallFilesStats.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
-                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
-                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Small Reports Summary</h3>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-50/50 sticky top-0">
-                        <tr>
-                          <th className="px-6 py-3 font-semibold text-gray-600">File Name</th>
-                          <th className="px-6 py-3 font-semibold text-green-600">Matched</th>
-                          <th className="px-6 py-3 font-semibold text-red-600">Unmatched</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {result.stats.smallFilesStats.map((stat, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-3 text-gray-800 font-medium truncate max-w-[200px]" title={stat.fileName}>
-                              {stat.fileName}
-                            </td>
-                            <td className="px-6 py-3 font-bold text-green-600">{stat.matched}</td>
-                            <td className="px-6 py-3 font-bold text-red-600">{stat.notFound}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
+              {/* Download Master File */}
               <div className="space-y-4 pt-6 border-t border-gray-100 mt-6">
-                <h3 className="text-xl font-bold text-gray-900 text-center">Download Reports</h3>
-                <div className="flex flex-col sm:flex-row gap-4">
+                <h3 className="text-xl font-bold text-gray-900 text-center">Download Master Report</h3>
+                <div className="flex justify-center">
                   {result.masterFile && (
                     <button
                       onClick={() => downloadExcel(result.masterFile)}
-                      className="flex-1 py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                      className="w-full sm:w-auto py-4 px-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
                     >
                       <Download className="w-5 h-5 shrink-0" />
-                      <span className="truncate">Master Report</span>
-                    </button>
-                  )}
-                  {result.zipFile && (
-                    <button
-                      onClick={() => downloadExcel(result.zipFile)}
-                      className="flex-1 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
-                    >
-                      <Download className="w-5 h-5 shrink-0" />
-                      <span className="truncate">All Small Reports (ZIP)</span>
+                      <span className="truncate">Download {result.masterFile.fileName}</span>
                     </button>
                   )}
                   {/* Fallback */}
                   {!result.masterFile && result.fileBase64 && (
                     <button
                       onClick={() => downloadExcel(result)}
-                      className="flex-1 py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                      className="w-full sm:w-auto py-4 px-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
                     >
                       <Download className="w-5 h-5 shrink-0" />
                       <span className="truncate">Download {result.fileName}</span>
                     </button>
                   )}
                 </div>
-                
+              </div>
+
+              {/* Small Files Individual Downloads & Stats */}
+              {result.smallFiles && result.smallFiles.length > 0 && (
+                <div className="space-y-4 pt-6 border-t border-gray-100 mt-6">
+                  <h3 className="text-xl font-bold text-gray-900 text-center">Small Reports Details & Downloads</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {result.smallFiles.map((sf, idx) => (
+                      <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                        <div className="p-4 border-b border-gray-50 flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-indigo-500 shrink-0" />
+                          <h4 className="font-bold text-gray-800 truncate" title={sf.fileName}>{sf.fileName}</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 p-4 bg-gray-50/50">
+                          <div className="text-center p-2 bg-green-50 rounded-lg">
+                            <p className="text-xs text-green-700 font-bold uppercase mb-1">Matched</p>
+                            <p className="text-xl font-black text-green-700">{sf.matched}</p>
+                          </div>
+                          <div className="text-center p-2 bg-red-50 rounded-lg">
+                            <p className="text-xs text-red-700 font-bold uppercase mb-1">Unmatched</p>
+                            <p className="text-xl font-black text-red-700">{sf.notFound}</p>
+                          </div>
+                        </div>
+                        <div className="p-4 mt-auto">
+                          <button
+                            onClick={() => downloadExcel(sf)}
+                            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Download className="w-4 h-4 shrink-0" />
+                            Download File
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-6 border-t border-gray-100 mt-6">
                 <button
                   onClick={reset}
-                  className="w-full mt-6 py-4 px-6 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
+                  className="w-full py-4 px-6 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
                 >
                   Start Over
                 </button>

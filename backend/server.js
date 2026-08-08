@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const xlsx = require('xlsx');
-const JSZip = require('jszip');
 
 const app = express();
 const port = 3001;
@@ -219,10 +218,9 @@ app.post('/api/match', upload.fields([
             fileBase64: excelBuffer.toString('base64')
         };
         
-        const zip = new JSZip();
-        const smallFilesStats = [];
+        const smallFilesResponse = [];
 
-        // Generate buffers for small files
+        // Generate buffers and stats for small files
         for (const sf of smallFilesData) {
             let matched = 0;
             let notFound = 0;
@@ -230,12 +228,6 @@ app.post('/api/match', upload.fields([
             sf.data.forEach(r => {
                 if (r['Match Status'] === 'MATCHED ✅') matched++;
                 else notFound++;
-            });
-
-            smallFilesStats.push({
-                fileName: sf.originalName,
-                matched: matched,
-                notFound: notFound
             });
 
             const sfWorkbook = new ExcelJS.Workbook();
@@ -259,15 +251,13 @@ app.post('/api/match', upload.fields([
                 original = original.replace(/\.(csv|xls)$/i, '.xlsx'); // save as xlsx since exceljs
             }
             
-            zip.file(`Annotated_${original}`, sfBuffer);
+            smallFilesResponse.push({
+                fileName: `Annotated_${original}`,
+                fileBase64: sfBuffer.toString('base64'),
+                matched: matched,
+                notFound: notFound
+            });
         }
-
-        const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
-        
-        const zipFileResponse = {
-            fileName: 'Annotated_Small_Reports.zip',
-            fileBase64: zipBuffer.toString('base64')
-        };
 
         // Send response with files array and stats
         res.json({
@@ -275,11 +265,10 @@ app.post('/api/match', upload.fields([
             stats: {
                 totalMaster: masterData.length,
                 matched: matchedCount,
-                notFound: notFoundCount,
-                smallFilesStats: smallFilesStats
+                notFound: notFoundCount
             },
             masterFile: masterFileResponse,
-            zipFile: zipFileResponse
+            smallFiles: smallFilesResponse
         });
 
     } catch (error) {
