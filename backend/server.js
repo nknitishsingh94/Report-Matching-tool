@@ -52,15 +52,22 @@ app.post('/api/match', upload.fields([
         };
 
         // Aggregate small files data into a Map
+        const smallFilesData = [];
         const callerMap = new Map();
         for (let i = 0; i < smallFiles.length; i++) {
             const file = smallFiles[i];
             const label = labels[i] || `File ${i + 1}`;
+            const originalName = file.originalname || label;
 
             const smallWorkbook = xlsx.read(file.buffer, { type: 'buffer', cellDates: true });
             const smallSheetName = smallWorkbook.SheetNames[0];
             const smallSheet = smallWorkbook.Sheets[smallSheetName];
             const smallData = xlsx.utils.sheet_to_json(smallSheet, { defval: "" });
+            
+            smallFilesData.push({
+                originalName: originalName,
+                data: smallData
+            });
 
             for (const row of smallData) {
                 // Heuristic column matching
@@ -89,11 +96,13 @@ app.post('/api/match', upload.fields([
                         if (!existing.label.includes(label)) {
                             existing.label += `, ${label}`;
                         }
+                        existing.sourceRows.push(row);
                     } else {
                         callerMap.set(compositeKey, {
                             disposition: row[dispositionKey],
                             totalTime: row[timeKey],
-                            label: label
+                            label: label,
+                            sourceRows: [row]
                         });
                     }
                 }
@@ -136,6 +145,9 @@ app.post('/api/match', upload.fields([
                     row['Source Label'] = matchData.label;
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
+                    
+                    // Mark the source small file rows as matched
+                    matchData.sourceRows.forEach(sr => sr['Match Status'] = 'MATCHED ✅');
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
                     // Update match status to "Not Found"
                     row['Match Status'] = 'NOT FOUND ❌';
@@ -154,59 +166,88 @@ app.post('/api/match', upload.fields([
             });
         }
 
+        // Mark unmatched small file rows
+        smallFilesData.forEach(sf => {
+            sf.data.forEach(row => {
+                if (!row['Match Status']) {
+                    row['Match Status'] = 'NOT FOUND ❌';
+                }
+            });
+        });
+
         // Create updated master sheet using exceljs
         const ExcelJS = require('exceljs');
         const newWorkbook = new ExcelJS.Workbook();
         const updatedMasterSheet = newWorkbook.addWorksheet('Updated Master');
 
-        if (masterData.length > 0) {
-            const headers = Object.keys(masterData[0]);
-            updatedMasterSheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
+        const highlightRows = (sheet, data) => {
+            if (data.length > 0) {
+                const headers = Object.keys(data[0]);
+                sheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
 
-            masterData.forEach((rowData) => {
-                const row = updatedMasterSheet.addRow(rowData);
-                
-                // Highlight row based on Match Status
-                if (rowData['Match Status'] === 'MATCHED ✅') {
-                    row.eachCell((cell) => {
-                        cell.fill = {
-                            type: 'pattern',
-                            pattern: 'solid',
-                            fgColor: { argb: 'FFC6EFCE' } // Light green
-                        };
-                        cell.font = { color: { argb: 'FF006100' } }; // Dark green text
-                    });
-                } else if (rowData['Match Status'] === 'NOT FOUND ❌') {
-                    row.eachCell((cell) => {
-                        cell.fill = {
-                            type: 'pattern',
-                            pattern: 'solid',
-                            fgColor: { argb: 'FFFFC7CE' } // Light red
-                        };
-                        cell.font = { color: { argb: 'FF9C0006' } }; // Dark red text
-                    });
-                }
-            });
-            
-            // Make header bold
-            updatedMasterSheet.getRow(1).font = { bold: true };
-        }
+                data.forEach((rowData) => {
+                    const row = sheet.addRow(rowData);
+                    
+                    if (rowData['Match Status'] === 'MATCHED ✅') {
+                        row.eachCell((cell) => {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+                            cell.font = { color: { argb: 'FF006100' } };
+                        });
+                    } else if (rowData['Match Status'] === 'NOT FOUND ❌') {
+                        row.eachCell((cell) => {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+                            cell.font = { color: { argb: 'FF9C0006' } };
+                        });
+                    }
+                });
+                sheet.getRow(1).font = { bold: true };
+            }
+        };
 
-        // Create Not Found sheet
+        highlightRows(updatedMasterSheet, masterData);
+
         if (notFoundList.length > 0) {
             const notFoundSheet = newWorkbook.addWorksheet('Not Found');
-            const headers = Object.keys(notFoundList[0]);
-            notFoundSheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
-            notFoundList.forEach(rowData => {
-                notFoundSheet.addRow(rowData);
-            });
-            notFoundSheet.getRow(1).font = { bold: true };
+            highlightRows(notFoundSheet, notFoundList);
         }
 
-        // Generate buffer
         const excelBuffer = await newWorkbook.xlsx.writeBuffer();
+        
+        const responseFiles = [{
+            fileName: 'Updated_Master_Report.xlsx',
+            fileBase64: excelBuffer.toString('base64')
+        }];
+        
+        // Generate buffers for small files
+        for (const sf of smallFilesData) {
+            const sfWorkbook = new ExcelJS.Workbook();
+            const sfSheet = sfWorkbook.addWorksheet('Annotated');
+            
+            // Sort so MATCHED are at top (optional)
+            sf.data.sort((a, b) => {
+                if (a['Match Status'] === 'MATCHED ✅' && b['Match Status'] !== 'MATCHED ✅') return -1;
+                if (a['Match Status'] !== 'MATCHED ✅' && b['Match Status'] === 'MATCHED ✅') return 1;
+                return 0;
+            });
+            
+            highlightRows(sfSheet, sf.data);
+            const sfBuffer = await sfWorkbook.xlsx.writeBuffer();
+            
+            // Add prefix to original name to avoid confusion
+            let original = sf.originalName;
+            if (!original.endsWith('.xlsx') && !original.endsWith('.xls') && !original.endsWith('.csv')) {
+                original += '.xlsx'; // fallback
+            } else {
+                original = original.replace(/\.(csv|xls)$/i, '.xlsx'); // save as xlsx since exceljs
+            }
+            
+            responseFiles.push({
+                fileName: `Annotated_${original}`,
+                fileBase64: sfBuffer.toString('base64')
+            });
+        }
 
-        // Send response with base64 encoded file and stats
+        // Send response with files array and stats
         res.json({
             success: true,
             stats: {
@@ -214,8 +255,7 @@ app.post('/api/match', upload.fields([
                 matched: matchedCount,
                 notFound: notFoundCount
             },
-            fileBase64: excelBuffer.toString('base64'),
-            fileName: 'Updated_Master_Report.xlsx'
+            files: responseFiles
         });
 
     } catch (error) {

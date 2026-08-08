@@ -69,10 +69,10 @@ function App() {
     }
   };
 
-  const downloadExcel = () => {
-    if (!result || !result.fileBase64) return;
+  const downloadExcel = (fileObj) => {
+    if (!fileObj || !fileObj.fileBase64) return;
 
-    const byteCharacters = atob(result.fileBase64);
+    const byteCharacters = atob(fileObj.fileBase64);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
       byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -83,7 +83,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = result.fileName || 'Reconciled_Report.xlsx';
+    a.download = fileObj.fileName || 'Reconciled_Report.xlsx';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -310,19 +310,40 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-100">
+              <div className="space-y-4 pt-6 border-t border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 text-center">Download Annotated Files</h3>
+                <div className="flex flex-col gap-3">
+                  {result.files && result.files.map((fileObj, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => downloadExcel(fileObj)}
+                      className={`py-4 px-6 text-white rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 ${
+                        idx === 0 
+                          ? 'bg-gradient-to-r from-gray-900 to-gray-800 shadow-gray-900/20 hover:shadow-gray-900/30'
+                          : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-indigo-500/20 hover:shadow-indigo-500/30'
+                      } hover:-translate-y-0.5`}
+                    >
+                      <Download className="w-5 h-5 shrink-0" />
+                      <span className="truncate">Download {fileObj.fileName}</span>
+                    </button>
+                  ))}
+                  {/* Fallback for backward compatibility if old server is running */}
+                  {!result.files && result.fileBase64 && (
+                    <button
+                      onClick={() => downloadExcel(result)}
+                      className="py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                    >
+                      <Download className="w-5 h-5 shrink-0" />
+                      <span className="truncate">Download {result.fileName}</span>
+                    </button>
+                  )}
+                </div>
+                
                 <button
                   onClick={reset}
-                  className="flex-1 py-4 px-6 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
+                  className="w-full mt-6 py-4 px-6 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
                 >
                   Start Over
-                </button>
-                <button
-                  onClick={downloadExcel}
-                  className="flex-[2] py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
-                >
-                  <Download className="w-6 h-6" />
-                  Download Master Report
                 </button>
               </div>
             </div>
