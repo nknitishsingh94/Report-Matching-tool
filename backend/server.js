@@ -204,6 +204,7 @@ app.post('/api/match', upload.fields([
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
                     // Update match status to "Not Found"
                     row['Match Status'] = 'NOT FOUND ❌';
+                    row['Duration Difference'] = 'N/A';
                     notFoundCount++;
                     notFoundList.push(row);
                 } else {
