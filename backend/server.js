@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const xlsx = require('xlsx');
+const JSZip = require('jszip');
 
 const app = express();
 const port = 3001;
@@ -213,13 +214,30 @@ app.post('/api/match', upload.fields([
 
         const excelBuffer = await newWorkbook.xlsx.writeBuffer();
         
-        const responseFiles = [{
+        const masterFileResponse = {
             fileName: 'Updated_Master_Report.xlsx',
             fileBase64: excelBuffer.toString('base64')
-        }];
+        };
         
+        const zip = new JSZip();
+        const smallFilesStats = [];
+
         // Generate buffers for small files
         for (const sf of smallFilesData) {
+            let matched = 0;
+            let notFound = 0;
+            
+            sf.data.forEach(r => {
+                if (r['Match Status'] === 'MATCHED ✅') matched++;
+                else notFound++;
+            });
+
+            smallFilesStats.push({
+                fileName: sf.originalName,
+                matched: matched,
+                notFound: notFound
+            });
+
             const sfWorkbook = new ExcelJS.Workbook();
             const sfSheet = sfWorkbook.addWorksheet('Annotated');
             
@@ -241,11 +259,15 @@ app.post('/api/match', upload.fields([
                 original = original.replace(/\.(csv|xls)$/i, '.xlsx'); // save as xlsx since exceljs
             }
             
-            responseFiles.push({
-                fileName: `Annotated_${original}`,
-                fileBase64: sfBuffer.toString('base64')
-            });
+            zip.file(`Annotated_${original}`, sfBuffer);
         }
+
+        const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+        
+        const zipFileResponse = {
+            fileName: 'Annotated_Small_Reports.zip',
+            fileBase64: zipBuffer.toString('base64')
+        };
 
         // Send response with files array and stats
         res.json({
@@ -253,9 +275,11 @@ app.post('/api/match', upload.fields([
             stats: {
                 totalMaster: masterData.length,
                 matched: matchedCount,
-                notFound: notFoundCount
+                notFound: notFoundCount,
+                smallFilesStats: smallFilesStats
             },
-            files: responseFiles
+            masterFile: masterFileResponse,
+            zipFile: zipFileResponse
         });
 
     } catch (error) {

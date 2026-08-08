@@ -78,7 +78,12 @@ function App() {
       byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
     const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const isZip = fileObj.fileName && fileObj.fileName.endsWith('.zip');
+    const mimeType = isZip 
+      ? 'application/zip' 
+      : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    
+    const blob = new Blob([byteArray], { type: mimeType });
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -310,28 +315,63 @@ function App() {
                 </div>
               </div>
 
-              <div className="space-y-4 pt-6 border-t border-gray-100">
-                <h3 className="text-xl font-bold text-gray-900 text-center">Download Annotated Files</h3>
-                <div className="flex flex-col gap-3">
-                  {result.files && result.files.map((fileObj, idx) => (
+              {/* Small Files Stats */}
+              {result.stats.smallFilesStats && result.stats.smallFilesStats.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+                  <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Small Reports Summary</h3>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50/50 sticky top-0">
+                        <tr>
+                          <th className="px-6 py-3 font-semibold text-gray-600">File Name</th>
+                          <th className="px-6 py-3 font-semibold text-green-600">Matched</th>
+                          <th className="px-6 py-3 font-semibold text-red-600">Unmatched</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {result.stats.smallFilesStats.map((stat, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-3 text-gray-800 font-medium truncate max-w-[200px]" title={stat.fileName}>
+                              {stat.fileName}
+                            </td>
+                            <td className="px-6 py-3 font-bold text-green-600">{stat.matched}</td>
+                            <td className="px-6 py-3 font-bold text-red-600">{stat.notFound}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4 pt-6 border-t border-gray-100 mt-6">
+                <h3 className="text-xl font-bold text-gray-900 text-center">Download Reports</h3>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {result.masterFile && (
                     <button
-                      key={idx}
-                      onClick={() => downloadExcel(fileObj)}
-                      className={`py-4 px-6 text-white rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 ${
-                        idx === 0 
-                          ? 'bg-gradient-to-r from-gray-900 to-gray-800 shadow-gray-900/20 hover:shadow-gray-900/30'
-                          : 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-indigo-500/20 hover:shadow-indigo-500/30'
-                      } hover:-translate-y-0.5`}
+                      onClick={() => downloadExcel(result.masterFile)}
+                      className="flex-1 py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
                     >
                       <Download className="w-5 h-5 shrink-0" />
-                      <span className="truncate">Download {fileObj.fileName}</span>
+                      <span className="truncate">Master Report</span>
                     </button>
-                  ))}
-                  {/* Fallback for backward compatibility if old server is running */}
-                  {!result.files && result.fileBase64 && (
+                  )}
+                  {result.zipFile && (
+                    <button
+                      onClick={() => downloadExcel(result.zipFile)}
+                      className="flex-1 py-4 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                    >
+                      <Download className="w-5 h-5 shrink-0" />
+                      <span className="truncate">All Small Reports (ZIP)</span>
+                    </button>
+                  )}
+                  {/* Fallback */}
+                  {!result.masterFile && result.fileBase64 && (
                     <button
                       onClick={() => downloadExcel(result)}
-                      className="py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                      className="flex-1 py-4 px-6 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
                     >
                       <Download className="w-5 h-5 shrink-0" />
                       <span className="truncate">Download {result.fileName}</span>
