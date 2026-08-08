@@ -15,6 +15,41 @@ app.get('/', (req, res) => {
 // Configure multer for in-memory file storage
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+app.use(express.json());
+
+// Helper function to parse duration strings into seconds
+const parseDuration = (timeStr) => {
+    if (!timeStr) return 0;
+    if (!isNaN(timeStr)) {
+        const num = parseFloat(timeStr);
+        if (num < 1) return Math.round(num * 24 * 3600);
+        return num;
+    }
+    const parts = timeStr.toString().split(':').map(Number);
+    if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+        return parts[0] * 60 + parts[1];
+    }
+    return 0;
+};
+
+// Helper function to format seconds difference into +/-HH:MM:SS
+const formatDurationDiff = (diffSec) => {
+    if (diffSec === 0) return "0";
+    const sign = diffSec > 0 ? "+" : "-";
+    let absSec = Math.abs(diffSec);
+    const hrs = Math.floor(absSec / 3600);
+    absSec %= 3600;
+    const mins = Math.floor(absSec / 60);
+    const secs = Math.floor(absSec % 60);
+    
+    const hStr = hrs.toString().padStart(2, '0');
+    const mStr = mins.toString().padStart(2, '0');
+    const sStr = secs.toString().padStart(2, '0');
+    
+    return `${sign}${hStr}:${mStr}:${sStr}`;
+};
 
 app.post('/api/match', upload.fields([
     { name: 'masterFile', maxCount: 1 },
@@ -91,19 +126,17 @@ app.post('/api/match', upload.fields([
                 const compositeKey = `${callerId}_${normDate}`;
 
                 if (callerId && callerId !== "undefined") {
+                    const mappedRow = {
+                        row: row,
+                        dispositionKey: dispositionKey,
+                        timeKey: timeKey,
+                        label: label
+                    };
+
                     if (callerMap.has(compositeKey)) {
-                        const existing = callerMap.get(compositeKey);
-                        if (!existing.label.includes(label)) {
-                            existing.label += `, ${label}`;
-                        }
-                        existing.sourceRows.push(row);
+                        callerMap.get(compositeKey).push(mappedRow);
                     } else {
-                        callerMap.set(compositeKey, {
-                            disposition: row[dispositionKey],
-                            totalTime: row[timeKey],
-                            label: label,
-                            sourceRows: [row]
-                        });
+                        callerMap.set(compositeKey, [mappedRow]);
                     }
                 }
             }
@@ -137,24 +170,37 @@ app.post('/api/match', upload.fields([
                 
                 const compositeKey = `${callerId}_${normDate}`;
 
-                if (callerId && callerId !== "undefined" && callerMap.has(compositeKey)) {
-                    const matchData = callerMap.get(compositeKey);
+                const mappedRows = callerMap.get(compositeKey);
+                if (callerId && callerId !== "undefined" && mappedRows && mappedRows.length > 0) {
+                    // 1-to-1 matching: consume one small file row
+                    const matchData = mappedRows.shift();
+                    const sr = matchData.row;
+
+                    // Duration Diff Calculation
+                    const masterTimeStr = row[masterTimeKey] ? row[masterTimeKey].toString() : "0";
+                    const smallTimeStr = sr[matchData.timeKey] ? sr[matchData.timeKey].toString() : "0";
+                    
+                    const masterSec = parseDuration(masterTimeStr);
+                    const smallSec = parseDuration(smallTimeStr);
+                    const diffSec = smallSec - masterSec;
+                    const diffStr = formatDurationDiff(diffSec);
+
                     // Update the master row with data from small files
-                    row[masterDispositionKey] = matchData.disposition;
-                    row[masterTimeKey] = matchData.totalTime;
+                    row[masterDispositionKey] = sr[matchData.dispositionKey];
+                    row[masterTimeKey] = sr[matchData.timeKey];
                     row['Source Label'] = matchData.label;
+                    row['Duration Difference'] = diffStr;
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
                     
-                    // Mark the source small file rows as matched and copy master data
-                    matchData.sourceRows.forEach(sr => {
-                        sr['Match Status'] = 'MATCHED ✅';
-                        for (const key of Object.keys(row)) {
-                            if (!(key in sr) && key !== 'Match Status') {
-                                sr[key] = row[key];
-                            }
+                    // Mark the source small file row as matched and copy master data
+                    sr['Duration Difference'] = diffStr;
+                    sr['Match Status'] = 'MATCHED ✅';
+                    for (const key of Object.keys(row)) {
+                        if (!(key in sr) && key !== 'Match Status') {
+                            sr[key] = row[key];
                         }
-                    });
+                    }
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
                     // Update match status to "Not Found"
                     row['Match Status'] = 'NOT FOUND ❌';
