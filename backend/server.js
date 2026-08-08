@@ -146,8 +146,15 @@ app.post('/api/match', upload.fields([
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
                     
-                    // Mark the source small file rows as matched
-                    matchData.sourceRows.forEach(sr => sr['Match Status'] = 'MATCHED ✅');
+                    // Mark the source small file rows as matched and copy master data
+                    matchData.sourceRows.forEach(sr => {
+                        sr['Match Status'] = 'MATCHED ✅';
+                        for (const key of Object.keys(row)) {
+                            if (!(key in sr) && key !== 'Match Status') {
+                                sr[key] = row[key];
+                            }
+                        }
+                    });
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
                     // Update match status to "Not Found"
                     row['Match Status'] = 'NOT FOUND ❌';
@@ -182,7 +189,11 @@ app.post('/api/match', upload.fields([
 
         const highlightRows = (sheet, data) => {
             if (data.length > 0) {
-                const headers = Object.keys(data[0]);
+                // Compute headers dynamically to capture newly added columns
+                const headerSet = new Set();
+                data.forEach(r => Object.keys(r).forEach(k => headerSet.add(k)));
+                const headers = Array.from(headerSet);
+                
                 sheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
 
                 data.forEach((rowData) => {
