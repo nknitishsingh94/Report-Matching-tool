@@ -84,11 +84,18 @@ app.post('/api/match', upload.fields([
                 const compositeKey = `${callerId}_${normDate}`;
 
                 if (callerId && callerId !== "undefined") {
-                    callerMap.set(compositeKey, {
-                        disposition: row[dispositionKey],
-                        totalTime: row[timeKey],
-                        label: label
-                    });
+                    if (callerMap.has(compositeKey)) {
+                        const existing = callerMap.get(compositeKey);
+                        if (!existing.label.includes(label)) {
+                            existing.label += `, ${label}`;
+                        }
+                    } else {
+                        callerMap.set(compositeKey, {
+                            disposition: row[dispositionKey],
+                            totalTime: row[timeKey],
+                            label: label
+                        });
+                    }
                 }
             }
         }
