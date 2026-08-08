@@ -189,22 +189,22 @@ app.post('/api/match', upload.fields([
                     row[masterDispositionKey] = sr[matchData.dispositionKey];
                     row[masterTimeKey] = sr[matchData.timeKey];
                     row['Source Label'] = matchData.label;
-                    row['Duration Difference'] = diffStr;
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
                     
+                    // Update small file duration with brackets
+                    sr[matchData.timeKey] = `${sr[matchData.timeKey]} [${diffStr}]`;
+                    
                     // Mark the source small file row as matched and copy master data
-                    sr['Duration Difference'] = diffStr;
                     sr['Match Status'] = 'MATCHED ✅';
                     for (const key of Object.keys(row)) {
-                        if (!(key in sr) && key !== 'Match Status') {
+                        if (!(key in sr) && key !== 'Match Status' && key !== masterTimeKey) {
                             sr[key] = row[key];
                         }
                     }
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
                     // Update match status to "Not Found"
                     row['Match Status'] = 'NOT FOUND ❌';
-                    row['Duration Difference'] = 'N/A';
                     notFoundCount++;
                     notFoundList.push(row);
                 } else {
