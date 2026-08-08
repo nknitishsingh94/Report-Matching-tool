@@ -45,6 +45,12 @@ app.post('/api/match', upload.fields([
             return str.split(' ')[0].split('T')[0];
         };
 
+        const sanitizeId = (id) => {
+            if (id === undefined || id === null) return '';
+            // Remove all non-alphanumeric chars and lowercase
+            return String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        };
+
         // Aggregate small files data into a Map
         const callerMap = new Map();
         for (let i = 0; i < smallFiles.length; i++) {
@@ -59,7 +65,7 @@ app.post('/api/match', upload.fields([
             for (const row of smallData) {
                 // Heuristic column matching
                 let callerIdKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid');
-                if (!callerIdKey) callerIdKey = Object.keys(row).find(k => k.toLowerCase().includes('caller'));
+                if (!callerIdKey) callerIdKey = Object.keys(row).find(k => k.toLowerCase().includes('caller') || k.toLowerCase().includes('number'));
 
                 let dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date') && !k.toLowerCase().includes('update'));
 
@@ -67,12 +73,12 @@ app.post('/api/match', upload.fields([
                 let timeKey = Object.keys(row).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration'));
 
                 // Fallbacks if columns are not found exactly
-                if (!callerIdKey) callerIdKey = 'Caller ID';
-                if (!dispositionKey) dispositionKey = 'Disposition';
-                if (!timeKey) timeKey = 'Total Time';
+                if (!callerIdKey) callerIdKey = 'Number';
+                if (!dispositionKey) dispositionKey = 'Status';
+                if (!timeKey) timeKey = 'Duration time';
                 if (!dateKey) dateKey = 'Date';
 
-                const callerId = String(row[callerIdKey]).trim();
+                const callerId = sanitizeId(row[callerIdKey]);
                 const normDate = normalizeDate(row[dateKey]);
                 
                 const compositeKey = `${callerId}_${normDate}`;
@@ -101,16 +107,16 @@ app.post('/api/match', upload.fields([
         if (masterData.length > 0) {
             const firstRow = masterData[0];
             let masterCallerIdKey = Object.keys(firstRow).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid') ||
-                Object.keys(firstRow).find(k => k.toLowerCase().includes('caller')) || 'Caller ID';
+                Object.keys(firstRow).find(k => k.toLowerCase().includes('caller') || k.toLowerCase().includes('number')) || 'Number';
 
             let masterDateKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('date') && !k.toLowerCase().includes('update')) || 'Date';
 
-            let masterDispositionKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status')) || 'Disposition';
-            let masterTimeKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration')) || 'Total Time';
+            let masterDispositionKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status')) || 'Status';
+            let masterTimeKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('time') || k.toLowerCase().includes('duration')) || 'Duration time';
 
             for (let i = 0; i < masterData.length; i++) {
                 const row = masterData[i];
-                const callerId = String(row[masterCallerIdKey]).trim();
+                const callerId = sanitizeId(row[masterCallerIdKey]);
                 const normDate = normalizeDate(row[masterDateKey]);
                 
                 const compositeKey = `${callerId}_${normDate}`;
