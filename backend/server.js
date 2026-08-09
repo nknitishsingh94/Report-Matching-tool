@@ -195,13 +195,8 @@ app.post('/api/match', upload.fields([
                     // Update small file duration with brackets
                     sr[matchData.timeKey] = `${sr[matchData.timeKey]} [${diffStr}]`;
                     
-                    // Mark the source small file row as matched and copy master data
+                    // Mark the source small file row as matched
                     sr['Match Status'] = 'MATCHED ✅';
-                    for (const key of Object.keys(row)) {
-                        if (!(key in sr) && key !== 'Match Status' && key !== masterTimeKey) {
-                            sr[key] = row[key];
-                        }
-                    }
                 } else if (callerId && callerId !== "undefined" && callerId !== "") {
                     // Update match status to "Not Found"
                     row['Match Status'] = 'NOT FOUND ❌';
