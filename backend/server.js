@@ -17,40 +17,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 app.use(express.json());
 
-// Helper function to parse duration strings into seconds
-const parseDuration = (timeStr) => {
-    if (!timeStr) return 0;
-    if (!isNaN(timeStr)) {
-        const num = parseFloat(timeStr);
-        if (num < 1) return Math.round(num * 24 * 3600);
-        return num;
-    }
-    const parts = timeStr.toString().split(':').map(Number);
-    if (parts.length === 3) {
-        return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-        return parts[0] * 60 + parts[1];
-    }
-    return 0;
-};
-
-// Helper function to format seconds difference into +/-HH:MM:SS
-const formatDurationDiff = (diffSec) => {
-    if (diffSec === 0) return "0";
-    const sign = diffSec > 0 ? "+" : "-";
-    let absSec = Math.abs(diffSec);
-    const hrs = Math.floor(absSec / 3600);
-    absSec %= 3600;
-    const mins = Math.floor(absSec / 60);
-    const secs = Math.floor(absSec % 60);
-    
-    const hStr = hrs.toString().padStart(2, '0');
-    const mStr = mins.toString().padStart(2, '0');
-    const sStr = secs.toString().padStart(2, '0');
-    
-    return `${sign}${hStr}:${mStr}:${sStr}`;
-};
-
+// Helper functions for duration removed as requested
 app.post('/api/match', upload.fields([
     { name: 'masterFile', maxCount: 1 },
     { name: 'smallFiles' }
@@ -200,25 +167,12 @@ app.post('/api/match', upload.fields([
                     const matchData = mappedRows[0];
                     const sr = matchData.row;
 
-                    // Duration Diff Calculation
-                    const masterTimeStr = row[masterTimeKey] ? row[masterTimeKey].toString() : "0";
-                    const smallTimeStr = sr[matchData.timeKey] ? sr[matchData.timeKey].toString() : "0";
-                    
-                    const masterSec = parseDuration(masterTimeStr);
-                    const smallSec = parseDuration(smallTimeStr);
-                    const diffSec = smallSec - masterSec;
-                    const diffStr = formatDurationDiff(diffSec);
-
                     // Update the master row with data from small files
                     row[masterDispositionKey] = sr[matchData.dispositionKey];
                     row[masterTimeKey] = sr[matchData.timeKey];
-                    row['Duration Difference'] = diffStr;
                     row['Source Label'] = matchData.label;
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
-                    
-                    // Add Duration Difference to small file instead of overwriting original
-                    sr['Duration Difference'] = diffStr;
                     
                     // Mark the source small file row as matched
                     sr['Match Status'] = 'MATCHED ✅';
