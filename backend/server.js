@@ -172,8 +172,8 @@ app.post('/api/match', upload.fields([
 
                 const mappedRows = callerMap.get(compositeKey);
                 if (callerId && callerId !== "undefined" && mappedRows && mappedRows.length > 0) {
-                    // 1-to-1 matching: consume one small file row
-                    const matchData = mappedRows.shift();
+                    // Allow one small file record to match multiple master records (no shift)
+                    const matchData = mappedRows[0];
                     const sr = matchData.row;
 
                     // Duration Diff Calculation
