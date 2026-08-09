@@ -238,7 +238,8 @@ app.post('/api/match', upload.fields([
         
         const masterFileResponse = {
             fileName: 'Updated_Master_Report.xlsx',
-            fileBase64: excelBuffer.toString('base64')
+            fileBase64: excelBuffer.toString('base64'),
+            previewData: [...masterData, ...notFoundList]
         };
         
         const smallFilesResponse = [];
@@ -278,7 +279,8 @@ app.post('/api/match', upload.fields([
                 fileName: `Annotated_${original}`,
                 fileBase64: sfBuffer.toString('base64'),
                 matched: matched,
-                notFound: notFound
+                notFound: notFound,
+                previewData: sf.data
             });
         }
 

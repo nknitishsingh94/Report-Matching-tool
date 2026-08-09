@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap, Eye, X } from 'lucide-react';
 
 function App() {
   const [masterFile, setMasterFile] = useState(null);
@@ -7,6 +7,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   const masterInputRef = useRef(null);
   const smallInputRef = useRef(null);
@@ -100,6 +101,7 @@ function App() {
     setSmallFiles([]);
     setResult(null);
     setError(null);
+    setPreviewFile(null);
     if (masterInputRef.current) masterInputRef.current.value = "";
     if (smallInputRef.current) smallInputRef.current.value = "";
   };
@@ -320,13 +322,24 @@ function App() {
                 <h3 className="text-xl font-bold text-gray-900 text-center">Download Master Report</h3>
                 <div className="flex justify-center">
                   {result.masterFile && (
-                    <button
-                      onClick={() => downloadExcel(result.masterFile)}
-                      className="w-full sm:w-auto py-4 px-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
-                    >
-                      <Download className="w-5 h-5 shrink-0" />
-                      <span className="truncate">Download {result.masterFile.fileName}</span>
-                    </button>
+                    <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={() => downloadExcel(result.masterFile)}
+                        className="flex-1 py-4 px-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-2xl font-bold shadow-xl shadow-gray-900/20 hover:shadow-gray-900/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3"
+                      >
+                        <Download className="w-5 h-5 shrink-0" />
+                        <span className="truncate">Download {result.masterFile.fileName}</span>
+                      </button>
+                      {result.masterFile.previewData && (
+                        <button
+                          onClick={() => setPreviewFile(result.masterFile)}
+                          className="flex-1 py-4 px-8 bg-white border border-gray-200 text-gray-800 rounded-2xl font-bold shadow-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-3"
+                        >
+                          <Eye className="w-5 h-5 shrink-0 text-indigo-600" />
+                          <span>Preview Data</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                   {/* Fallback */}
                   {!result.masterFile && result.fileBase64 && (
@@ -362,7 +375,7 @@ function App() {
                             <p className="text-xl font-black text-red-700">{sf.notFound}</p>
                           </div>
                         </div>
-                        <div className="p-4 mt-auto">
+                        <div className="p-4 mt-auto flex flex-col gap-2">
                           <button
                             onClick={() => downloadExcel(sf)}
                             className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
@@ -370,6 +383,15 @@ function App() {
                             <Download className="w-4 h-4 shrink-0" />
                             Download File
                           </button>
+                          {sf.previewData && (
+                            <button
+                              onClick={() => setPreviewFile(sf)}
+                              className="w-full py-3 px-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                            >
+                              <Eye className="w-4 h-4 shrink-0 text-indigo-600" />
+                              Preview Data
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -390,6 +412,80 @@ function App() {
 
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {previewFile && previewFile.previewData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet className="w-6 h-6 text-indigo-600" />
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{previewFile.fileName}</h3>
+                  <p className="text-sm text-gray-500 font-medium">Data Preview ({previewFile.previewData.length} records)</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPreviewFile(null)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-900"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-0">
+              {previewFile.previewData.length > 0 ? (
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                      {Object.keys(previewFile.previewData[0]).map((key, i) => (
+                        <th key={i} className="p-3 font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {previewFile.previewData.map((row, i) => (
+                      <tr 
+                        key={i} 
+                        className={`hover:bg-gray-50 transition-colors ${row['Match Status'] === 'MATCHED ✅' ? 'bg-green-50/30' : row['Match Status'] === 'NOT FOUND ❌' ? 'bg-red-50/30' : ''}`}
+                      >
+                        {Object.keys(previewFile.previewData[0]).map((key, j) => (
+                          <td 
+                            key={j} 
+                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key] === 'MATCHED ✅' ? 'text-green-700 font-bold' : row[key] === 'NOT FOUND ❌' ? 'text-red-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
+                          >
+                            {row[key]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-12 text-center text-gray-500 font-medium">
+                  No data available for preview.
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setPreviewFile(null)}
+                className="py-2 px-6 bg-white border border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition-all"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => downloadExcel(previewFile)}
+                className="py-2 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-md shadow-indigo-500/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download Full File
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
