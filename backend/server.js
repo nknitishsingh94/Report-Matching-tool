@@ -70,13 +70,28 @@ app.post('/api/match', upload.fields([
 
         const normalizeDate = (val) => {
             if (!val) return '';
-            if (typeof val === 'number') {
-                // Excel serial date to JS Date
-                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
-                return date.toISOString().split('T')[0];
+            
+            // If it's a JS Date object (parsed by cellDates: true)
+            if (val instanceof Date) {
+                if (!isNaN(val)) return val.toISOString().split('T')[0];
+                return '';
             }
+
+            // If it's an Excel serial date number
+            if (typeof val === 'number') {
+                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+                if (!isNaN(date)) return date.toISOString().split('T')[0];
+                return '';
+            }
+            
+            // It's a string. Try parsing it first.
             const str = String(val).trim();
-            // Just take the date part before any space or 'T'
+            const d = new Date(str);
+            if (!isNaN(d)) {
+                return d.toISOString().split('T')[0];
+            }
+
+            // Fallback: just take the date part before any space or 'T'
             return str.split(' ')[0].split('T')[0];
         };
 
@@ -121,9 +136,9 @@ app.post('/api/match', upload.fields([
                 if (!dateKey) dateKey = 'Date';
 
                 const callerId = sanitizeId(row[callerIdKey]);
-                const normDate = normalizeDate(row[dateKey]);
                 
-                const compositeKey = `${callerId}_${normDate}`;
+                // Match strictly on callerId as requested
+                const compositeKey = callerId;
 
                 if (callerId && callerId !== "undefined") {
                     const mappedRow = {
@@ -166,9 +181,9 @@ app.post('/api/match', upload.fields([
             for (let i = 0; i < masterData.length; i++) {
                 const row = masterData[i];
                 const callerId = sanitizeId(row[masterCallerIdKey]);
-                const normDate = normalizeDate(row[masterDateKey]);
                 
-                const compositeKey = `${callerId}_${normDate}`;
+                // Match strictly on callerId
+                const compositeKey = callerId;
 
                 const mappedRows = callerMap.get(compositeKey);
                 if (callerId && callerId !== "undefined" && mappedRows && mappedRows.length > 0) {
