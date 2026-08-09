@@ -1,10 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap, Search } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap } from 'lucide-react';
 
 function App() {
   const [masterFile, setMasterFile] = useState(null);
   const [smallFiles, setSmallFiles] = useState([]);
-  const [searchDate, setSearchDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -44,9 +43,6 @@ function App() {
 
     const formData = new FormData();
     formData.append('masterFile', masterFile);
-    if (searchDate) {
-      formData.append('searchDate', searchDate);
-    }
     smallFiles.forEach((item) => {
       formData.append('smallFiles', item.file);
       formData.append('labels', item.label);
@@ -102,7 +98,6 @@ function App() {
   const reset = () => {
     setMasterFile(null);
     setSmallFiles([]);
-    setSearchDate("");
     setResult(null);
     setError(null);
     if (masterInputRef.current) masterInputRef.current.value = "";
@@ -260,30 +255,6 @@ function App() {
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-
-              {/* Date Filter */}
-              <div className="pt-2 pb-4">
-                <div className="relative max-w-md mx-auto group">
-                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
-                  </div>
-                  <input
-                    type="date"
-                    value={searchDate}
-                    onChange={(e) => setSearchDate(e.target.value)}
-                    className="block w-full pl-14 pr-12 py-4 bg-white border border-gray-200 rounded-full text-gray-700 font-medium placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all hover:shadow-md cursor-pointer"
-                  />
-                  {searchDate && (
-                    <button 
-                      onClick={() => setSearchDate("")}
-                      className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-400 hover:text-red-500 font-bold text-xl transition-colors"
-                      title="Clear date"
-                    >
-                      &times;
-                    </button>
-                  )}
                 </div>
               </div>
 
