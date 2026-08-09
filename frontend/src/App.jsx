@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap, Search } from 'lucide-react';
 
 function App() {
   const [masterFile, setMasterFile] = useState(null);
@@ -264,23 +264,26 @@ function App() {
               </div>
 
               {/* Date Filter */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 text-blue-700 text-sm font-bold">3</span>
-                    Filter by Date (Optional)
-                  </h3>
-                </div>
-                <div className="bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center transition-all duration-300 hover:bg-white hover:border-blue-300">
+              <div className="pt-2 pb-4">
+                <div className="relative max-w-md mx-auto group">
+                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                  </div>
                   <input
                     type="date"
                     value={searchDate}
                     onChange={(e) => setSearchDate(e.target.value)}
-                    className="w-full max-w-sm border-2 border-gray-200 rounded-xl p-3 text-gray-700 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
+                    className="block w-full pl-14 pr-12 py-4 bg-white border border-gray-200 rounded-full text-gray-700 font-medium placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all hover:shadow-md cursor-pointer"
                   />
-                  <p className="text-xs text-gray-500 mt-3 text-center">
-                    If provided, only records matching this date will be updated and processed.
-                  </p>
+                  {searchDate && (
+                    <button 
+                      onClick={() => setSearchDate("")}
+                      className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-400 hover:text-red-500 font-bold text-xl transition-colors"
+                      title="Clear date"
+                    >
+                      &times;
+                    </button>
+                  )}
                 </div>
               </div>
 
