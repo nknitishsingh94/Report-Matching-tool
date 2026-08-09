@@ -67,6 +67,9 @@ app.post('/api/match', upload.fields([
         const smallFiles = req.files['smallFiles'];
         const labelsInput = req.body.labels;
         const labels = Array.isArray(labelsInput) ? labelsInput : [labelsInput];
+        
+        const searchDateInput = req.body.searchDate;
+        const searchDate = searchDateInput ? new Date(searchDateInput).toISOString().split('T')[0] : null;
 
         const normalizeDate = (val) => {
             if (!val) return '';
@@ -136,7 +139,13 @@ app.post('/api/match', upload.fields([
                 if (!dateKey) dateKey = 'Date';
 
                 const callerId = sanitizeId(row[callerIdKey]);
+                const rowDate = normalizeDate(row[dateKey]);
                 
+                // If searchDate is provided, skip rows that don't match
+                if (searchDate && rowDate !== searchDate) {
+                    continue;
+                }
+
                 // Match strictly on callerId as requested
                 const compositeKey = callerId;
 
@@ -203,12 +212,13 @@ app.post('/api/match', upload.fields([
                     // Update the master row with data from small files
                     row[masterDispositionKey] = sr[matchData.dispositionKey];
                     row[masterTimeKey] = sr[matchData.timeKey];
+                    row['Duration Difference'] = diffStr;
                     row['Source Label'] = matchData.label;
                     row['Match Status'] = 'MATCHED ✅';
                     matchedCount++;
                     
-                    // Update small file duration with brackets
-                    sr[matchData.timeKey] = `${sr[matchData.timeKey]} [${diffStr}]`;
+                    // Add Duration Difference to small file instead of overwriting original
+                    sr['Duration Difference'] = diffStr;
                     
                     // Mark the source small file row as matched
                     sr['Match Status'] = 'MATCHED ✅';

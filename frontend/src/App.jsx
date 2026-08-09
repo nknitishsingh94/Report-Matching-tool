@@ -4,6 +4,7 @@ import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, Refre
 function App() {
   const [masterFile, setMasterFile] = useState(null);
   const [smallFiles, setSmallFiles] = useState([]);
+  const [searchDate, setSearchDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -43,6 +44,9 @@ function App() {
 
     const formData = new FormData();
     formData.append('masterFile', masterFile);
+    if (searchDate) {
+      formData.append('searchDate', searchDate);
+    }
     smallFiles.forEach((item) => {
       formData.append('smallFiles', item.file);
       formData.append('labels', item.label);
@@ -98,6 +102,7 @@ function App() {
   const reset = () => {
     setMasterFile(null);
     setSmallFiles([]);
+    setSearchDate("");
     setResult(null);
     setError(null);
     if (masterInputRef.current) masterInputRef.current.value = "";
@@ -255,6 +260,27 @@ function App() {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* Date Filter */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 text-blue-700 text-sm font-bold">3</span>
+                    Filter by Date (Optional)
+                  </h3>
+                </div>
+                <div className="bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center transition-all duration-300 hover:bg-white hover:border-blue-300">
+                  <input
+                    type="date"
+                    value={searchDate}
+                    onChange={(e) => setSearchDate(e.target.value)}
+                    className="w-full max-w-sm border-2 border-gray-200 rounded-xl p-3 text-gray-700 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all font-medium"
+                  />
+                  <p className="text-xs text-gray-500 mt-3 text-center">
+                    If provided, only records matching this date will be updated and processed.
+                  </p>
                 </div>
               </div>
 
