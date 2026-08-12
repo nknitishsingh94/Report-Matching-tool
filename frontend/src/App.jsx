@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap, Eye, X } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle, AlertCircle, Download, RefreshCcw, FileText, Zap, Eye, X, PhoneCall, Activity, Database } from 'lucide-react';
 
 function App() {
   const [masterFile, setMasterFile] = useState(null);
@@ -8,6 +8,13 @@ function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  
+  // Validation State
+  const [mode, setMode] = useState('reconcile'); // 'reconcile' | 'validate'
+  const [validationFile, setValidationFile] = useState(null);
+  const [validationResult, setValidationResult] = useState(null);
+  
+  const validationInputRef = useRef(null);
 
   const masterInputRef = useRef(null);
   const smallInputRef = useRef(null);
@@ -65,6 +72,44 @@ function App() {
       setResult(data);
     } catch (err) {
       setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  const handleValidationUpload = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setValidationFile(e.target.files[0]);
+    }
+  };
+
+  const handleValidation = async () => {
+    if (!validationFile) {
+      setError("Please upload a sheet to validate.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('sheet', validationFile);
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/validate-numbers`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to validate numbers");
+      }
+
+      const data = await response.json();
+      setValidationResult(data);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -102,8 +147,11 @@ function App() {
     setResult(null);
     setError(null);
     setPreviewFile(null);
+    setValidationFile(null);
+    setValidationResult(null);
     if (masterInputRef.current) masterInputRef.current.value = "";
     if (smallInputRef.current) smallInputRef.current.value = "";
+    if (validationInputRef.current) validationInputRef.current.value = "";
   };
 
   return (
@@ -120,14 +168,36 @@ function App() {
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center p-3 bg-white rounded-2xl shadow-sm mb-2 ring-1 ring-gray-900/5">
-            <Zap className="w-8 h-8 text-indigo-600 fill-indigo-100" />
+            {mode === 'reconcile' ? <Zap className="w-8 h-8 text-indigo-600 fill-indigo-100" /> : <PhoneCall className="w-8 h-8 text-indigo-600 fill-indigo-100" />}
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-indigo-800 to-gray-900 tracking-tight">
-            Data Reconciliation Hub
+            {mode === 'reconcile' ? 'Data Reconciliation Hub' : 'Number Validation Hub'}
           </h1>
           <p className="max-w-2xl mx-auto text-lg text-gray-600 font-medium">
-            Seamlessly match and synchronize Caller IDs across multiple reports in seconds.
+            {mode === 'reconcile' 
+              ? 'Seamlessly match and synchronize Caller IDs across multiple reports in seconds.'
+              : 'Upload a sheet of phone numbers to detect VoIP, mobile, and landline types instantly.'}
           </p>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="flex justify-center">
+          <div className="inline-flex bg-white/60 backdrop-blur-md p-1.5 rounded-2xl shadow-sm border border-white/50">
+            <button
+              onClick={() => { setMode('reconcile'); reset(); }}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${mode === 'reconcile' ? 'bg-white text-indigo-700 shadow-md ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700 hover:bg-white/40'}`}
+            >
+              <Database className="w-4 h-4" />
+              Reconciliation
+            </button>
+            <button
+              onClick={() => { setMode('validate'); reset(); }}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 ${mode === 'validate' ? 'bg-white text-indigo-700 shadow-md ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700 hover:bg-white/40'}`}
+            >
+              <PhoneCall className="w-4 h-4" />
+              Number Validation
+            </button>
+          </div>
         </div>
 
         <div className="bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 p-6 sm:p-10 transition-all duration-500">
@@ -142,12 +212,13 @@ function App() {
             </div>
           )}
 
-          {!result ? (
-            <div className="space-y-10">
+          {mode === 'reconcile' ? (
+            !result ? (
+              <div className="space-y-10">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Master Upload */}
-                <div className="space-y-4 relative group">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Master Upload */}
+                  <div className="space-y-4 relative group">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                       <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 text-sm font-bold">1</span>
@@ -408,6 +479,158 @@ function App() {
                 </button>
               </div>
             </div>
+            )
+          ) : (
+            /* VALIDATION UI */
+            !validationResult ? (
+              <div className="space-y-10">
+                {/* Validation Upload */}
+                <div className="space-y-4 relative group max-w-lg mx-auto">
+                  <div className="flex items-center justify-center">
+                    <h3 className="text-lg font-bold text-gray-800">Upload Numbers Sheet</h3>
+                  </div>
+
+                  <div
+                    className={`relative cursor-pointer overflow-hidden border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all duration-300 ${validationFile
+                        ? 'border-indigo-400 bg-indigo-50/50 shadow-inner'
+                        : 'border-gray-200 bg-gray-50/50 hover:bg-white hover:border-indigo-300 hover:shadow-lg hover:-translate-y-1'
+                      }`}
+                    onClick={() => validationInputRef.current?.click()}
+                  >
+                    <input type="file" className="hidden" accept=".xlsx, .xls, .csv" ref={validationInputRef} onChange={handleValidationUpload} />
+
+                    {validationFile ? (
+                      <div className="animate-in zoom-in-95 duration-300 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
+                          <CheckCircle className="w-8 h-8 text-indigo-500" />
+                        </div>
+                        <p className="text-sm font-bold text-gray-900 truncate w-full px-4">{validationFile.name}</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                          <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-700">Drop your file here</p>
+                        <p className="text-xs text-gray-500 mt-1">.xlsx, .csv</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 max-w-lg mx-auto">
+                  <button
+                    onClick={handleValidation}
+                    disabled={loading || !validationFile}
+                    className={`relative overflow-hidden w-full py-5 rounded-2xl font-bold text-lg text-white shadow-xl transition-all duration-300 flex items-center justify-center gap-3 ${loading || !validationFile
+                        ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                        : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_100%] hover:bg-[100%_0] hover:shadow-indigo-500/25 hover:-translate-y-0.5'
+                      }`}
+                  >
+                    {loading ? (
+                      <>
+                        <RefreshCcw className="w-6 h-6 animate-spin" />
+                        Validating...
+                      </>
+                    ) : (
+                      <>
+                        Validate Numbers
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-500">
+                <div className="text-center space-y-4">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-400 to-purple-500 shadow-lg shadow-indigo-500/30 mb-2">
+                    <Activity className="w-10 h-10 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Validation Complete</h2>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100">
+                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">Total</p>
+                    <p className="text-2xl font-black text-gray-900">{validationResult.stats.total}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-2xl p-4 text-center border border-green-100">
+                    <p className="text-xs text-green-700 font-bold uppercase mb-1">Mobile</p>
+                    <p className="text-2xl font-black text-green-700">{validationResult.stats.mobile}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-2xl p-4 text-center border border-red-100">
+                    <p className="text-xs text-red-700 font-bold uppercase mb-1">VoIP</p>
+                    <p className="text-2xl font-black text-red-700">{validationResult.stats.voip}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-2xl p-4 text-center border border-blue-100">
+                    <p className="text-xs text-blue-700 font-bold uppercase mb-1">Landline</p>
+                    <p className="text-2xl font-black text-blue-700">{validationResult.stats.landline}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-center gap-4 pt-4">
+                  <button
+                    onClick={() => downloadExcel(validationResult.file)}
+                    className="py-4 px-8 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-500/20 flex items-center gap-3 hover:-translate-y-0.5 transition-all"
+                  >
+                    <Download className="w-5 h-5 shrink-0" />
+                    Download Validated Sheet
+                  </button>
+                  <button
+                    onClick={() => setPreviewFile(validationResult.file)}
+                    className="py-4 px-8 bg-white border border-gray-200 text-gray-800 rounded-2xl font-bold shadow-sm hover:bg-gray-50 flex items-center gap-3 transition-all"
+                  >
+                    <Eye className="w-5 h-5 text-indigo-600" />
+                    Preview
+                  </button>
+                </div>
+
+                {/* Active Log */}
+                {validationResult.activeLog && validationResult.activeLog.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Recent Validations (Active Log)</h3>
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="max-h-64 overflow-y-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-gray-50 text-gray-500 font-semibold sticky top-0">
+                            <tr>
+                              <th className="p-3 border-b">Time</th>
+                              <th className="p-3 border-b">Phone</th>
+                              <th className="p-3 border-b">Type</th>
+                              <th className="p-3 border-b">Carrier</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {validationResult.activeLog.map((log, i) => (
+                              <tr key={i} className="hover:bg-gray-50">
+                                <td className="p-3 text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</td>
+                                <td className="p-3 font-medium text-gray-800">{log.phone}</td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-1 rounded text-xs font-bold ${log.type === 'voip' ? 'bg-red-100 text-red-700' : log.type === 'mobile' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                    {log.type}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-gray-600">{log.carrier}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-6 border-t border-gray-100 mt-6">
+                  <button
+                    onClick={reset}
+                    className="w-full py-4 px-6 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl font-bold hover:bg-gray-50 hover:border-gray-300 transition-all focus:ring-4 focus:ring-gray-100"
+                  >
+                    Start Over
+                  </button>
+                </div>
+
+              </div>
+            )
           )}
 
         </div>

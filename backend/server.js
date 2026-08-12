@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const xlsx = require('xlsx');
+const fs = require('fs');
+const path = require('path');
+const ExcelJS = require('exceljs');
 
 const app = express();
 const port = 3001;
@@ -299,6 +302,132 @@ app.post('/api/match', upload.fields([
     } catch (error) {
         console.error('Error processing files:', error);
         res.status(500).json({ error: 'Failed to process files.' });
+    }
+});
+
+// Helper for Mock Veriphone
+const getMockVeriphoneResponse = (phone) => {
+    const types = ['mobile', 'voip', 'fixed_line'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    return {
+        status: "success",
+        phone: phone,
+        phone_valid: true,
+        phone_type: type,
+        carrier: "Mock Carrier",
+        country: "United States"
+    };
+};
+
+const LOG_FILE = path.join(__dirname, 'validation_log.json');
+
+app.post('/api/validate-numbers', upload.single('sheet'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Sheet file is required.' });
+        }
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(sheet, { defval: "" });
+
+        if (data.length === 0) {
+            return res.status(400).json({ error: 'Sheet is empty.' });
+        }
+
+        let phoneKey = Object.keys(data[0]).find(k => k.toLowerCase().includes('phone') || k.toLowerCase().includes('number') || k.toLowerCase().includes('caller'));
+        if (!phoneKey) phoneKey = Object.keys(data[0])[0]; // Fallback to first column
+
+        let voipCount = 0;
+        let mobileCount = 0;
+        let landlineCount = 0;
+        let validCount = 0;
+
+        const logEntries = [];
+
+        for (let row of data) {
+            const phone = row[phoneKey];
+            if (phone) {
+                // Mock API Call
+                const apiResponse = getMockVeriphoneResponse(phone);
+                
+                row['Valid'] = apiResponse.phone_valid ? 'Yes' : 'No';
+                row['Line Type'] = apiResponse.phone_type;
+                row['Carrier'] = apiResponse.carrier;
+
+                if (apiResponse.phone_valid) validCount++;
+                if (apiResponse.phone_type === 'voip') voipCount++;
+                else if (apiResponse.phone_type === 'mobile') mobileCount++;
+                else if (apiResponse.phone_type === 'fixed_line') landlineCount++;
+
+                logEntries.push({
+                    timestamp: new Date().toISOString(),
+                    phone: phone,
+                    type: apiResponse.phone_type,
+                    carrier: apiResponse.carrier
+                });
+            }
+        }
+
+        // Save to Active Log
+        let existingLog = [];
+        if (fs.existsSync(LOG_FILE)) {
+            existingLog = JSON.parse(fs.readFileSync(LOG_FILE, 'utf8'));
+        }
+        existingLog = [...logEntries, ...existingLog].slice(0, 500); // Keep last 500
+        fs.writeFileSync(LOG_FILE, JSON.stringify(existingLog, null, 2));
+
+        // Create Response Excel
+        const newWorkbook = new ExcelJS.Workbook();
+        const updatedSheet = newWorkbook.addWorksheet('Validated Numbers');
+        
+        if (data.length > 0) {
+            const headers = Object.keys(data[0]);
+            updatedSheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
+            
+            data.forEach(rowData => {
+                const row = updatedSheet.addRow(rowData);
+                if (rowData['Line Type'] === 'voip') {
+                    row.eachCell(cell => {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; // Light red for VoIP
+                        cell.font = { color: { argb: 'FF9C0006' } };
+                    });
+                } else {
+                    row.eachCell(cell => {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; // Light green for others
+                        cell.font = { color: { argb: 'FF006100' } };
+                    });
+                }
+            });
+            updatedSheet.getRow(1).font = { bold: true };
+        }
+
+        const excelBuffer = await newWorkbook.xlsx.writeBuffer();
+        
+        let originalName = req.file.originalname || 'Numbers';
+        originalName = originalName.replace(/\.(csv|xls)$/i, '.xlsx');
+
+        res.json({
+            success: true,
+            stats: {
+                total: data.length,
+                valid: validCount,
+                voip: voipCount,
+                mobile: mobileCount,
+                landline: landlineCount
+            },
+            file: {
+                fileName: `Validated_${originalName}`,
+                fileBase64: excelBuffer.toString('base64'),
+                previewData: data
+            },
+            activeLog: existingLog.slice(0, 50) // Return top 50 for UI
+        });
+
+    } catch (error) {
+        console.error('Error validating numbers:', error);
+        res.status(500).json({ error: 'Failed to validate numbers.' });
     }
 });
 
