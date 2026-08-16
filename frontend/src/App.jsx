@@ -8,6 +8,9 @@ function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDate, setFilterDate] = useState('');
+  const [filterExt, setFilterExt] = useState('');
   
   // Validation State
   const [mode, setMode] = useState('reconcile'); // 'reconcile' | 'validate'
@@ -365,26 +368,25 @@ function App() {
                 <p className="text-gray-500 font-medium text-lg">Your master report has been successfully updated with the latest data.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                  <p className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-2">Total Processed</p>
-                  <p className="text-4xl font-black text-gray-900">{result.stats.totalMaster}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl p-4 text-center shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                  <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Total (Master)</p>
+                  <p className="text-2xl font-black text-gray-900">{result.stats.totalMaster}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-6 text-center border border-green-100 shadow-sm shadow-green-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <CheckCircle className="w-16 h-16 text-green-600" />
-                  </div>
-                  <p className="text-sm text-green-700 font-bold uppercase tracking-wider mb-2 relative z-10">Matched</p>
-                  <p className="text-4xl font-black text-green-700 relative z-10">{result.stats.matched}</p>
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-4 text-center border border-green-100 shadow-sm shadow-green-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
+                  <p className="text-xs text-green-700 font-bold uppercase tracking-wider mb-2 relative z-10">Matched</p>
+                  <p className="text-2xl font-black text-green-700 relative z-10">{result.stats.matched}</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-2xl p-6 text-center border border-red-100 shadow-sm shadow-red-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <AlertCircle className="w-16 h-16 text-red-600" />
-                  </div>
-                  <p className="text-sm text-red-700 font-bold uppercase tracking-wider mb-2 relative z-10">Unmatched</p>
-                  <p className="text-4xl font-black text-red-700 relative z-10">{result.stats.notFound}</p>
+                <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-2xl p-4 text-center border border-red-100 shadow-sm shadow-red-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
+                  <p className="text-xs text-red-700 font-bold uppercase tracking-wider mb-2 relative z-10">Missing</p>
+                  <p className="text-2xl font-black text-red-700 relative z-10">{result.stats.notFound}</p>
+                </div>
+                
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl p-4 text-center border border-yellow-100 shadow-sm shadow-yellow-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
+                  <p className="text-xs text-yellow-700 font-bold uppercase tracking-wider mb-2 relative z-10">Extra</p>
+                  <p className="text-2xl font-black text-yellow-700 relative z-10">{result.stats.extra || 0}</p>
                 </div>
               </div>
 
@@ -640,20 +642,32 @@ function App() {
       {previewFile && previewFile.previewData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-8">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet className="w-6 h-6 text-indigo-600" />
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">{previewFile.fileName}</h3>
-                  <p className="text-sm text-gray-500 font-medium">Data Preview ({previewFile.previewData.length} records)</p>
+            <div className="flex flex-col p-6 border-b border-gray-100 bg-gray-50/50 gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="w-6 h-6 text-indigo-600" />
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">{previewFile.fileName}</h3>
+                    <p className="text-sm text-gray-500 font-medium">Data Preview</p>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => setPreviewFile(null)}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-900"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-              <button 
-                onClick={() => setPreviewFile(null)}
-                className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500 hover:text-gray-900"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <div className="flex gap-4 flex-wrap">
+                  <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                      <option value="">All Statuses</option>
+                      <option value="MATCHED">Matched</option>
+                      <option value="MISSING">Missing</option>
+                      <option value="EXTRA">Extra</option>
+                  </select>
+                  <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDate} onChange={e => setFilterDate(e.target.value)} placeholder="Filter Date" />
+                  <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Filter Extension" />
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-0">
               {previewFile.previewData.length > 0 ? (
@@ -668,15 +682,22 @@ function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {previewFile.previewData.map((row, i) => (
+                    {(previewFile.previewData || [])
+                    .filter(row => {
+                        if (filterStatus && row['Match Status'] && !row['Match Status'].includes(filterStatus)) return false;
+                        if (filterDate && row['Date'] && !String(row['Date']).includes(filterDate)) return false;
+                        if (filterExt && row['Extension'] && !String(row['Extension']).includes(filterExt)) return false;
+                        return true;
+                    })
+                    .map((row, i) => (
                       <tr 
                         key={i} 
-                        className={`hover:bg-gray-50 transition-colors ${row['Match Status'] === 'MATCHED ✅' ? 'bg-green-50/30' : row['Match Status'] === 'NOT FOUND ❌' ? 'bg-red-50/30' : ''}`}
+                        className={`hover:bg-gray-50 transition-colors ${row['Match Status']?.includes('MATCHED') ? 'bg-green-50/30' : row['Match Status']?.includes('MISSING') ? 'bg-red-50/30' : row['Match Status']?.includes('EXTRA') ? 'bg-yellow-50/30' : ''}`}
                       >
                         {Object.keys(previewFile.previewData[0]).map((key, j) => (
                           <td 
                             key={j} 
-                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key] === 'MATCHED ✅' ? 'text-green-700 font-bold' : row[key] === 'NOT FOUND ❌' ? 'text-red-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
+                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key]?.includes('MATCHED') ? 'text-green-700 font-bold' : row[key]?.includes('MISSING') ? 'text-red-700 font-bold' : row[key]?.includes('EXTRA') ? 'text-yellow-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
                           >
                             {row[key]}
                           </td>

@@ -436,3 +436,239 @@ app.listen(port, () => {
 });
 
 module.exports = app;
+\napp.post('/api/match', upload.fields([
+    { name: 'masterFile', maxCount: 1 },
+    { name: 'smallFiles' }
+]), async (req, res) => {
+    try {
+        if (!req.files || !req.files['masterFile']) {
+            return res.status(400).json({ error: 'Master file is required.' });
+        }
+        if (!req.files['smallFiles'] || req.files['smallFiles'].length === 0) {
+            return res.status(400).json({ error: 'At least one small file is required.' });
+        }
+
+        const masterFile = req.files['masterFile'][0];
+        const smallFiles = req.files['smallFiles'];
+        const labelsInput = req.body.labels;
+        const labels = Array.isArray(labelsInput) ? labelsInput : [labelsInput];
+
+        const normalizeDate = (val) => {
+            if (!val) return '';
+            if (val instanceof Date) {
+                if (!isNaN(val)) return val.toISOString().split('T')[0];
+                return '';
+            }
+            if (typeof val === 'number') {
+                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+                if (!isNaN(date)) return date.toISOString().split('T')[0];
+                return '';
+            }
+            const str = String(val).trim();
+            const d = new Date(str);
+            if (!isNaN(d)) return d.toISOString().split('T')[0];
+            return str.split(' ')[0].split('T')[0] || str;
+        };
+
+        const sanitizeId = (id) => {
+            if (id === undefined || id === null) return '';
+            return String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        };
+
+        const getKeys = (row) => {
+            let callerIdKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'callerid');
+            if (!callerIdKey) callerIdKey = Object.keys(row).find(k => k.toLowerCase().includes('caller') || k.toLowerCase().includes('number') || k.toLowerCase().includes('phone'));
+            if (!callerIdKey) callerIdKey = 'Number';
+
+            let dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date') && !k.toLowerCase().includes('update'));
+            if (!dateKey) dateKey = 'Date';
+
+            let extKey = Object.keys(row).find(k => k.toLowerCase().includes('ext') || k.toLowerCase().includes('extension'));
+            if (!extKey) extKey = 'Extension';
+            
+            let statusKey = Object.keys(row).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status'));
+            if (!statusKey) statusKey = 'Status';
+
+            return { callerIdKey, dateKey, extKey, statusKey };
+        };
+
+        // Parse Master File
+        const masterWorkbook = xlsx.read(masterFile.buffer, { type: 'buffer', cellDates: true });
+        const masterSheetName = masterWorkbook.SheetNames[0];
+        const masterData = xlsx.utils.sheet_to_json(masterWorkbook.Sheets[masterSheetName], { defval: "" });
+
+        const masterMap = new Map();
+        for (const row of masterData) {
+            const keys = getKeys(row);
+            const num = sanitizeId(row[keys.callerIdKey]);
+            if (num) {
+                if (!masterMap.has(num)) masterMap.set(num, []);
+                masterMap.get(num).push({
+                    original: row,
+                    date: normalizeDate(row[keys.dateKey]),
+                    ext: row[keys.extKey] || '',
+                    status: row[keys.statusKey] || '',
+                    numberRaw: row[keys.callerIdKey]
+                });
+            }
+        }
+
+        // Parse Small Files
+        const smallMap = new Map();
+        const smallFilesData = [];
+
+        for (let i = 0; i < smallFiles.length; i++) {
+            const file = smallFiles[i];
+            const label = labels[i] || `File ${i + 1}`;
+            const originalName = file.originalname || label;
+
+            const smallWorkbook = xlsx.read(file.buffer, { type: 'buffer', cellDates: true });
+            const smallData = xlsx.utils.sheet_to_json(smallWorkbook.Sheets[smallWorkbook.SheetNames[0]], { defval: "" });
+            
+            smallFilesData.push({ originalName, data: smallData, label });
+
+            for (const row of smallData) {
+                const keys = getKeys(row);
+                const num = sanitizeId(row[keys.callerIdKey]);
+                if (num) {
+                    if (!smallMap.has(num)) smallMap.set(num, []);
+                    smallMap.get(num).push({
+                        original: row,
+                        date: normalizeDate(row[keys.dateKey]),
+                        ext: row[keys.extKey] || '',
+                        status: row[keys.statusKey] || '',
+                        numberRaw: row[keys.callerIdKey],
+                        source: label
+                    });
+                }
+            }
+        }
+
+        const auditData = [];
+        let matchedCount = 0;
+        let notFoundCount = 0; // Missing
+        let extraCount = 0;
+
+        // Process Master -> Mathced & Missing
+        for (const [num, mRows] of masterMap.entries()) {
+            const sRows = smallMap.get(num);
+            const isDuplicateMaster = mRows.length > 1;
+            const isDuplicateSmall = sRows && sRows.length > 1;
+            
+            let duplicateNote = '';
+            if (isDuplicateMaster && isDuplicateSmall) duplicateNote = 'Duplicate in Both';
+            else if (isDuplicateMaster) duplicateNote = 'Duplicate in Master';
+            else if (isDuplicateSmall) duplicateNote = 'Duplicate in Small File';
+
+            if (sRows && sRows.length > 0) {
+                // MATCHED
+                matchedCount += mRows.length;
+                for (let i = 0; i < mRows.length; i++) {
+                    const mRow = mRows[i];
+                    const sRow = sRows[i % sRows.length]; // cyclical if mismatch in counts
+                    
+                    auditData.push({
+                        'Date': mRow.date || sRow.date,
+                        'Extension': mRow.ext || sRow.ext,
+                        'Number': mRow.numberRaw || sRow.numberRaw,
+                        'Match Status': 'MATCHED ✅',
+                        'Source': `Master + ${sRow.source}`,
+                        'Master Status': mRow.status,
+                        'Small File Status': sRow.status,
+                        'Duplicate Note': duplicateNote
+                    });
+                }
+            } else {
+                // MISSING (In Master but not in Small)
+                notFoundCount += mRows.length;
+                for (const mRow of mRows) {
+                    auditData.push({
+                        'Date': mRow.date,
+                        'Extension': mRow.ext,
+                        'Number': mRow.numberRaw,
+                        'Match Status': 'MISSING ❌',
+                        'Source': 'Master Only',
+                        'Master Status': mRow.status,
+                        'Small File Status': 'N/A',
+                        'Duplicate Note': duplicateNote
+                    });
+                }
+            }
+        }
+
+        // Process Small -> Extra
+        for (const [num, sRows] of smallMap.entries()) {
+            if (!masterMap.has(num)) {
+                // EXTRA (In Small but not in Master)
+                extraCount += sRows.length;
+                const isDuplicateSmall = sRows.length > 1;
+                const duplicateNote = isDuplicateSmall ? 'Duplicate in Small File' : '';
+                
+                for (const sRow of sRows) {
+                    auditData.push({
+                        'Date': sRow.date,
+                        'Extension': sRow.ext,
+                        'Number': sRow.numberRaw,
+                        'Match Status': 'EXTRA ⚠️',
+                        'Source': sRow.source,
+                        'Master Status': 'N/A',
+                        'Small File Status': sRow.status,
+                        'Duplicate Note': duplicateNote
+                    });
+                }
+            }
+        }
+
+        // Create Excel with ExcelJS
+        const newWorkbook = new ExcelJS.Workbook();
+        
+        // 1. Create Audit Report Sheet
+        const auditSheet = newWorkbook.addWorksheet('Audit Report');
+        if (auditData.length > 0) {
+            const headers = Object.keys(auditData[0]);
+            auditSheet.columns = headers.map(header => ({ header: header, key: header, width: 22 }));
+            
+            auditData.forEach(rowData => {
+                const row = auditSheet.addRow(rowData);
+                if (rowData['Match Status'] === 'MATCHED ✅') {
+                    row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; cell.font = { color: { argb: 'FF006100' } }; });
+                } else if (rowData['Match Status'] === 'MISSING ❌') {
+                    row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; cell.font = { color: { argb: 'FF9C0006' } }; });
+                } else if (rowData['Match Status'] === 'EXTRA ⚠️') {
+                    row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } }; cell.font = { color: { argb: 'FF9C6500' } }; });
+                }
+            });
+            auditSheet.getRow(1).font = { bold: true };
+            
+            // Add AutoFilter
+            auditSheet.autoFilter = {
+                from: { row: 1, column: 1 },
+                to: { row: auditData.length + 1, column: headers.length }
+            };
+        }
+
+        const excelBuffer = await newWorkbook.xlsx.writeBuffer();
+        
+        const masterFileResponse = {
+            fileName: 'Master_Audit_Report.xlsx',
+            fileBase64: excelBuffer.toString('base64'),
+            previewData: auditData
+        };
+
+        res.json({
+            success: true,
+            stats: {
+                totalMaster: masterData.length,
+                matched: matchedCount,
+                notFound: notFoundCount,
+                extra: extraCount
+            },
+            masterFile: masterFileResponse,
+            smallFiles: [] // Deprecated annotated small files for audit mode
+        });
+
+    } catch (error) {
+        console.error('Error processing files:', error);
+        res.status(500).json({ error: 'Failed to process files.' });
+    }
+});\n
