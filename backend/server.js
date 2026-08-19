@@ -254,7 +254,6 @@ app.post('/api/match', upload.fields([
                     
                     auditData.push({
                         'Date': mRow.date || sRow.date,
-                        'Time': mRow.time || sRow.time,
                         'Time Zone': mRow.tz || sRow.tz,
                         'Extension': mRow.ext || sRow.ext,
                         'Number': mRow.numberRaw || sRow.numberRaw,
@@ -271,7 +270,6 @@ app.post('/api/match', upload.fields([
                 for (const mRow of mRows) {
                     auditData.push({
                         'Date': mRow.date,
-                        'Time': mRow.time,
                         'Time Zone': mRow.tz,
                         'Extension': mRow.ext,
                         'Number': mRow.numberRaw,
@@ -296,7 +294,6 @@ app.post('/api/match', upload.fields([
                 for (const sRow of sRows) {
                     auditData.push({
                         'Date': sRow.date,
-                        'Time': sRow.time,
                         'Time Zone': sRow.tz,
                         'Extension': sRow.ext,
                         'Number': sRow.numberRaw,

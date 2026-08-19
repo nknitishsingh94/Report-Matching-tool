@@ -12,8 +12,6 @@ function App() {
   const [filterDate, setFilterDate] = useState('');
   const [filterExt, setFilterExt] = useState('');
   const [filterTz, setFilterTz] = useState('');
-  const [filterTime, setFilterTime] = useState('');
-  
   // Validation State
   const [mode, setMode] = useState('reconcile'); // 'reconcile' | 'validate'
   const [validationFile, setValidationFile] = useState(null);
@@ -668,7 +666,6 @@ function App() {
                       <option value="EXTRA">Extra</option>
                   </select>
                   <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDate} onChange={e => setFilterDate(e.target.value)} placeholder="Filter Date" />
-                  <input type="time" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTime} onChange={e => setFilterTime(e.target.value)} placeholder="Filter Time" />
                   <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Filter Extension" />
                   
                   <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)}>
@@ -704,7 +701,6 @@ function App() {
                         if (filterDate && row['Date'] && !String(row['Date']).includes(filterDate)) return false;
                         if (filterExt && row['Extension'] && !String(row['Extension']).includes(filterExt)) return false;
                         if (filterTz && row['Time Zone'] && !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase())) return false;
-                        if (filterTime && row['Time'] && !String(row['Time']).includes(filterTime)) return false;
                         return true;
                     })
                     .map((row, i) => (
