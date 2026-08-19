@@ -11,6 +11,7 @@ function App() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterExt, setFilterExt] = useState('');
+  const [filterTz, setFilterTz] = useState('');
   
   // Validation State
   const [mode, setMode] = useState('reconcile'); // 'reconcile' | 'validate'
@@ -667,6 +668,7 @@ function App() {
                   </select>
                   <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDate} onChange={e => setFilterDate(e.target.value)} placeholder="Filter Date" />
                   <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Filter Extension" />
+                  <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)} placeholder="Filter Time Zone" />
               </div>
             </div>
             <div className="flex-1 overflow-auto p-0">
@@ -687,6 +689,7 @@ function App() {
                         if (filterStatus && row['Match Status'] && !row['Match Status'].includes(filterStatus)) return false;
                         if (filterDate && row['Date'] && !String(row['Date']).includes(filterDate)) return false;
                         if (filterExt && row['Extension'] && !String(row['Extension']).includes(filterExt)) return false;
+                        if (filterTz && row['Time Zone'] && !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase())) return false;
                         return true;
                     })
                     .map((row, i) => (

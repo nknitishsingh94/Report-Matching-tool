@@ -73,8 +73,11 @@ app.post('/api/match', upload.fields([
             
             let statusKey = Object.keys(row).find(k => k.toLowerCase().includes('disposition') || k.toLowerCase().includes('status'));
             if (!statusKey) statusKey = 'Status';
+            
+            let tzKey = Object.keys(row).find(k => k.toLowerCase().includes('zone') || k.toLowerCase().includes('tz'));
+            if (!tzKey) tzKey = 'Time Zone';
 
-            return { callerIdKey, dateKey, extKey, statusKey };
+            return { callerIdKey, dateKey, extKey, statusKey, tzKey };
         };
 
         // Parse Master File
@@ -93,7 +96,8 @@ app.post('/api/match', upload.fields([
                     date: normalizeDate(row[keys.dateKey]),
                     ext: row[keys.extKey] || '',
                     status: row[keys.statusKey] || '',
-                    numberRaw: row[keys.callerIdKey]
+                    numberRaw: row[keys.callerIdKey],
+                    tz: row[keys.tzKey] || ''
                 });
             }
         }
@@ -123,7 +127,8 @@ app.post('/api/match', upload.fields([
                         ext: row[keys.extKey] || '',
                         status: row[keys.statusKey] || '',
                         numberRaw: row[keys.callerIdKey],
-                        source: label
+                        source: label,
+                        tz: row[keys.tzKey] || ''
                     });
                 }
             }
@@ -154,6 +159,7 @@ app.post('/api/match', upload.fields([
                     
                     auditData.push({
                         'Date': mRow.date || sRow.date,
+                        'Time Zone': mRow.tz || sRow.tz,
                         'Extension': mRow.ext || sRow.ext,
                         'Number': mRow.numberRaw || sRow.numberRaw,
                         'Match Status': 'MATCHED ✅',
@@ -169,6 +175,7 @@ app.post('/api/match', upload.fields([
                 for (const mRow of mRows) {
                     auditData.push({
                         'Date': mRow.date,
+                        'Time Zone': mRow.tz,
                         'Extension': mRow.ext,
                         'Number': mRow.numberRaw,
                         'Match Status': 'MISSING ❌',
@@ -192,6 +199,7 @@ app.post('/api/match', upload.fields([
                 for (const sRow of sRows) {
                     auditData.push({
                         'Date': sRow.date,
+                        'Time Zone': sRow.tz,
                         'Extension': sRow.ext,
                         'Number': sRow.numberRaw,
                         'Match Status': 'EXTRA ⚠️',
