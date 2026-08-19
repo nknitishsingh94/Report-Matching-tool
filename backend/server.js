@@ -60,17 +60,64 @@ app.post('/api/match', upload.fields([
             const upperTz = String(tz).toUpperCase().trim();
             
             const tzMap = {
-                'EDT': 'EDT (US Eastern, New York/Miami)',
-                'EST': 'EST (US Eastern, New York/Miami)',
-                'CDT': 'CDT (US Central, Chicago/Texas)',
-                'CST': 'CST (US Central, Chicago/Texas)',
-                'MDT': 'MDT (US Mountain, Denver)',
-                'MST': 'MST (US Mountain, Denver)',
-                'PDT': 'PDT (US Pacific, California)',
-                'PST': 'PST (US Pacific, California)',
-                'GMT': 'GMT (UK/Europe)',
-                'BST': 'BST (UK Summer)',
-                'IST': 'IST (India)'
+                // North America (US & Canada)
+                'EDT': 'EDT (USA/Canada - Eastern)',
+                'EST': 'EST (USA/Canada - Eastern)',
+                'CDT': 'CDT (USA/Canada - Central)',
+                'CST': 'CST (USA/Canada - Central)',
+                'MDT': 'MDT (USA/Canada - Mountain)',
+                'MST': 'MST (USA/Canada - Mountain)',
+                'PDT': 'PDT (USA/Canada - Pacific)',
+                'PST': 'PST (USA/Canada - Pacific)',
+                'AST': 'AST (Canada - Atlantic)',
+                'ADT': 'ADT (Canada - Atlantic)',
+                'AKST': 'AKST (USA - Alaska)',
+                'AKDT': 'AKDT (USA - Alaska)',
+                'HST': 'HST (USA - Hawaii)',
+                
+                // Europe
+                'GMT': 'GMT (United Kingdom/Europe)',
+                'BST': 'BST (United Kingdom)',
+                'CET': 'CET (Central Europe)',
+                'CEST': 'CEST (Central Europe)',
+                'EET': 'EET (Eastern Europe)',
+                'EEST': 'EEST (Eastern Europe)',
+                'WET': 'WET (Western Europe)',
+                'WEST': 'WEST (Western Europe)',
+                
+                // Asia
+                'IST': 'IST (India)',
+                'JST': 'JST (Japan)',
+                'KST': 'KST (South Korea)',
+                'SGT': 'SGT (Singapore)',
+                'HKT': 'HKT (Hong Kong)',
+                'GST': 'GST (Gulf/UAE)',
+                'PKT': 'PKT (Pakistan)',
+                'PHT': 'PHT (Philippines)',
+                'WIB': 'WIB (Indonesia - Western)',
+                
+                // Oceania
+                'AEST': 'AEST (Australia - Eastern)',
+                'AEDT': 'AEDT (Australia - Eastern)',
+                'ACST': 'ACST (Australia - Central)',
+                'ACDT': 'ACDT (Australia - Central)',
+                'AWST': 'AWST (Australia - Western)',
+                'NZST': 'NZST (New Zealand)',
+                'NZDT': 'NZDT (New Zealand)',
+                
+                // Africa
+                'SAST': 'SAST (South Africa)',
+                'EAT': 'EAT (East Africa)',
+                'CAT': 'CAT (Central Africa)',
+                'WAT': 'WAT (West Africa)',
+                
+                // South America
+                'ART': 'ART (Argentina)',
+                'BRT': 'BRT (Brazil)',
+                'PET': 'PET (Peru)',
+                'COT': 'COT (Colombia)',
+                'CLT': 'CLT (Chile)',
+                'VET': 'VET (Venezuela)'
             };
 
             for (const [key, val] of Object.entries(tzMap)) {
