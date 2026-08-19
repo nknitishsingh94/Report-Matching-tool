@@ -697,10 +697,10 @@ function App() {
                   <tbody className="divide-y divide-gray-100">
                     {(previewFile.previewData || [])
                     .filter(row => {
-                        if (filterStatus && row['Match Status'] && !row['Match Status'].includes(filterStatus)) return false;
-                        if (filterDate && row['Date'] && !String(row['Date']).includes(filterDate)) return false;
-                        if (filterExt && row['Extension'] && !String(row['Extension']).includes(filterExt)) return false;
-                        if (filterTz && row['Time Zone'] && !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase())) return false;
+                        if (filterStatus && (!row['Match Status'] || !row['Match Status'].includes(filterStatus))) return false;
+                        if (filterDate && (!row['Date'] || !String(row['Date']).includes(filterDate))) return false;
+                        if (filterExt && (!row['Extension'] || !String(row['Extension']).includes(filterExt))) return false;
+                        if (filterTz && (!row['Time Zone'] || !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase()))) return false;
                         return true;
                     })
                     .map((row, i) => (
