@@ -12,6 +12,7 @@ function App() {
   const [filterDate, setFilterDate] = useState('');
   const [filterExt, setFilterExt] = useState('');
   const [filterTz, setFilterTz] = useState('');
+  const [filterTime, setFilterTime] = useState('');
   
   // Validation State
   const [mode, setMode] = useState('reconcile'); // 'reconcile' | 'validate'
@@ -667,8 +668,21 @@ function App() {
                       <option value="EXTRA">Extra</option>
                   </select>
                   <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDate} onChange={e => setFilterDate(e.target.value)} placeholder="Filter Date" />
+                  <input type="time" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTime} onChange={e => setFilterTime(e.target.value)} placeholder="Filter Time" />
                   <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Filter Extension" />
-                  <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)} placeholder="Filter Time Zone" />
+                  
+                  <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)}>
+                      <option value="">All Time Zones</option>
+                      <option value="USA/Canada - Eastern">US Eastern (EDT/EST)</option>
+                      <option value="USA/Canada - Central">US Central (CDT/CST)</option>
+                      <option value="USA/Canada - Mountain">US Mountain (MDT/MST)</option>
+                      <option value="USA/Canada - Pacific">US Pacific (PDT/PST)</option>
+                      <option value="United Kingdom">United Kingdom (GMT/BST)</option>
+                      <option value="Central Europe">Central Europe (CET/CEST)</option>
+                      <option value="India">India (IST)</option>
+                      <option value="Australia">Australia</option>
+                      <option value="Africa">Africa</option>
+                  </select>
               </div>
             </div>
             <div className="flex-1 overflow-auto p-0">
@@ -690,6 +704,7 @@ function App() {
                         if (filterDate && row['Date'] && !String(row['Date']).includes(filterDate)) return false;
                         if (filterExt && row['Extension'] && !String(row['Extension']).includes(filterExt)) return false;
                         if (filterTz && row['Time Zone'] && !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase())) return false;
+                        if (filterTime && row['Time'] && !String(row['Time']).includes(filterTime)) return false;
                         return true;
                     })
                     .map((row, i) => (

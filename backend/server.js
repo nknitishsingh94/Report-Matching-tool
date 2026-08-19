@@ -38,6 +38,26 @@ app.post('/api/match', upload.fields([
         const labelsInput = req.body.labels;
         const labels = Array.isArray(labelsInput) ? labelsInput : [labelsInput];
 
+        const normalizeTime = (val) => {
+            if (!val) return '';
+            if (val instanceof Date) {
+                if (!isNaN(val)) return val.toISOString().split('T')[1].substring(0, 5);
+                return '';
+            }
+            if (typeof val === 'number') {
+                const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+                if (!isNaN(date)) return date.toISOString().split('T')[1].substring(0, 5);
+                return '';
+            }
+            const str = String(val).trim();
+            const d = new Date(str);
+            if (!isNaN(d)) return d.toISOString().split('T')[1].substring(0, 5);
+            
+            const timeMatch = str.match(/\b([01]\d|2[0-3]):([0-5]\d)/);
+            if (timeMatch) return timeMatch[0];
+            return '';
+        };
+
         const normalizeDate = (val) => {
             if (!val) return '';
             if (val instanceof Date) {
@@ -149,7 +169,8 @@ app.post('/api/match', upload.fields([
             let tzKey = Object.keys(row).find(k => k.toLowerCase().includes('zone') || k.toLowerCase().includes('tz'));
             if (!tzKey) tzKey = 'Time Zone';
 
-            return { callerIdKey, dateKey, extKey, statusKey, tzKey };
+            let timeKey = Object.keys(row).find(k => k.toLowerCase() === 'time' || k.toLowerCase().includes(' time'));
+            return { callerIdKey, dateKey, extKey, statusKey, tzKey, timeKey };
         };
 
         // Parse Master File
@@ -166,6 +187,8 @@ app.post('/api/match', upload.fields([
                 masterMap.get(num).push({
                     original: row,
                     date: normalizeDate(row[keys.dateKey]),
+                        time: (keys.timeKey && row[keys.timeKey]) ? normalizeTime(row[keys.timeKey]) : normalizeTime(row[keys.dateKey]),
+                    time: (keys.timeKey && row[keys.timeKey]) ? normalizeTime(row[keys.timeKey]) : normalizeTime(row[keys.dateKey]),
                     ext: row[keys.extKey] || '',
                     status: row[keys.statusKey] || '',
                     numberRaw: row[keys.callerIdKey],
@@ -231,6 +254,7 @@ app.post('/api/match', upload.fields([
                     
                     auditData.push({
                         'Date': mRow.date || sRow.date,
+                        'Time': mRow.time || sRow.time,
                         'Time Zone': mRow.tz || sRow.tz,
                         'Extension': mRow.ext || sRow.ext,
                         'Number': mRow.numberRaw || sRow.numberRaw,
@@ -247,6 +271,7 @@ app.post('/api/match', upload.fields([
                 for (const mRow of mRows) {
                     auditData.push({
                         'Date': mRow.date,
+                        'Time': mRow.time,
                         'Time Zone': mRow.tz,
                         'Extension': mRow.ext,
                         'Number': mRow.numberRaw,
@@ -271,6 +296,7 @@ app.post('/api/match', upload.fields([
                 for (const sRow of sRows) {
                     auditData.push({
                         'Date': sRow.date,
+                        'Time': sRow.time,
                         'Time Zone': sRow.tz,
                         'Extension': sRow.ext,
                         'Number': sRow.numberRaw,
