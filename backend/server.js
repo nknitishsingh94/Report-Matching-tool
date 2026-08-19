@@ -55,6 +55,31 @@ app.post('/api/match', upload.fields([
             return str.split(' ')[0].split('T')[0] || str;
         };
 
+        const mapTimeZone = (tz) => {
+            if (!tz) return '';
+            const upperTz = String(tz).toUpperCase().trim();
+            
+            const tzMap = {
+                'EDT': 'EDT (US Eastern, New York/Miami)',
+                'EST': 'EST (US Eastern, New York/Miami)',
+                'CDT': 'CDT (US Central, Chicago/Texas)',
+                'CST': 'CST (US Central, Chicago/Texas)',
+                'MDT': 'MDT (US Mountain, Denver)',
+                'MST': 'MST (US Mountain, Denver)',
+                'PDT': 'PDT (US Pacific, California)',
+                'PST': 'PST (US Pacific, California)',
+                'GMT': 'GMT (UK/Europe)',
+                'BST': 'BST (UK Summer)',
+                'IST': 'IST (India)'
+            };
+
+            for (const [key, val] of Object.entries(tzMap)) {
+                if (upperTz === key) return val;
+                if (upperTz.includes(key)) return upperTz.replace(new RegExp(key, 'ig'), val);
+            }
+            return tz;
+        };
+
         const sanitizeId = (id) => {
             if (id === undefined || id === null) return '';
             return String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -97,7 +122,7 @@ app.post('/api/match', upload.fields([
                     ext: row[keys.extKey] || '',
                     status: row[keys.statusKey] || '',
                     numberRaw: row[keys.callerIdKey],
-                    tz: row[keys.tzKey] || ''
+                    tz: mapTimeZone(row[keys.tzKey] || '')
                 });
             }
         }
@@ -128,7 +153,7 @@ app.post('/api/match', upload.fields([
                         status: row[keys.statusKey] || '',
                         numberRaw: row[keys.callerIdKey],
                         source: label,
-                        tz: row[keys.tzKey] || ''
+                        tz: mapTimeZone(row[keys.tzKey] || '')
                     });
                 }
             }
