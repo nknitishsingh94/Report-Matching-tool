@@ -9,7 +9,10 @@ function App() {
   const [error, setError] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterDate, setFilterDate] = useState('');
+  const [filterDateStart, setFilterDateStart] = useState('');
+  const [filterDateEnd, setFilterDateEnd] = useState('');
+  const [filterTimeStart, setFilterTimeStart] = useState('');
+  const [filterTimeEnd, setFilterTimeEnd] = useState('');
   const [filterExt, setFilterExt] = useState('');
   const [filterTz, setFilterTz] = useState('');
   // Validation State
@@ -665,8 +668,11 @@ function App() {
                       <option value="MISSING">Missing</option>
                       <option value="EXTRA">Extra</option>
                   </select>
-                  <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDate} onChange={e => setFilterDate(e.target.value)} placeholder="Filter Date" />
-                  <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Filter Extension" />
+                  <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} title="Start Date" />
+                  <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} title="End Date" />
+                  <input type="time" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTimeStart} onChange={e => setFilterTimeStart(e.target.value)} title="Start Time" />
+                  <input type="time" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTimeEnd} onChange={e => setFilterTimeEnd(e.target.value)} title="End Time" />
+                  <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Extensions (e.g. 1804, 2435)" />
                   
                   <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)}>
                       <option value="">All Time Zones</option>
@@ -698,8 +704,31 @@ function App() {
                     {(previewFile.previewData || [])
                     .filter(row => {
                         if (filterStatus && (!row['Match Status'] || !row['Match Status'].includes(filterStatus))) return false;
-                        if (filterDate && (!row['Date'] || !String(row['Date']).includes(filterDate))) return false;
-                        if (filterExt && (!row['Extension'] || !String(row['Extension']).includes(filterExt))) return false;
+                        
+                        // Date Range Filter
+                        if (filterDateStart || filterDateEnd) {
+                            if (!row['Date']) return false;
+                            const rowDate = new Date(row['Date']);
+                            if (filterDateStart && rowDate < new Date(filterDateStart)) return false;
+                            if (filterDateEnd && rowDate > new Date(new Date(filterDateEnd).setHours(23, 59, 59))) return false;
+                        }
+                        
+                        // Time Range Filter
+                        if (filterTimeStart || filterTimeEnd) {
+                            if (!row['Time']) return false;
+                            const rowTime = String(row['Time']).substring(0, 5); // Ensure HH:mm format for comparison
+                            if (filterTimeStart && rowTime < filterTimeStart) return false;
+                            if (filterTimeEnd && rowTime > filterTimeEnd) return false;
+                        }
+
+                        // Multiple Extensions Filter
+                        if (filterExt) {
+                            if (!row['Extension']) return false;
+                            const extensions = filterExt.split(',').map(e => e.trim()).filter(e => e);
+                            const rowExt = String(row['Extension']).trim();
+                            if (extensions.length > 0 && !extensions.some(ext => rowExt.includes(ext) || ext.includes(rowExt))) return false;
+                        }
+
                         if (filterTz && (!row['Time Zone'] || !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase()))) return false;
                         return true;
                     })

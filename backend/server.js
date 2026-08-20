@@ -234,76 +234,80 @@ app.post('/api/match', upload.fields([
         let notFoundCount = 0; // Missing
         let extraCount = 0;
 
-        // Process Master -> Mathced & Missing
-        for (const [num, mRows] of masterMap.entries()) {
-            const sRows = smallMap.get(num);
+        const allNumbers = new Set([...masterMap.keys(), ...smallMap.keys()]);
+
+        for (const num of allNumbers) {
+            const mRows = masterMap.get(num) || [];
+            const sRows = smallMap.get(num) || [];
+            
             const isDuplicateMaster = mRows.length > 1;
-            const isDuplicateSmall = sRows && sRows.length > 1;
+            const isDuplicateSmall = sRows.length > 1;
             
             let duplicateNote = '';
             if (isDuplicateMaster && isDuplicateSmall) duplicateNote = 'Duplicate in Both';
             else if (isDuplicateMaster) duplicateNote = 'Duplicate in Master';
             else if (isDuplicateSmall) duplicateNote = 'Duplicate in Small File';
 
-            if (sRows && sRows.length > 0) {
-                // MATCHED
-                matchedCount += mRows.length;
-                for (let i = 0; i < mRows.length; i++) {
-                    const mRow = mRows[i];
-                    const sRow = sRows[i % sRows.length]; // cyclical if mismatch in counts
-                    
-                    auditData.push({
-                        'Date': mRow.date || sRow.date,
-                        'Time Zone': mRow.tz || sRow.tz,
-                        'Extension': mRow.ext || sRow.ext,
-                        'Number': mRow.numberRaw || sRow.numberRaw,
-                        'Match Status': 'MATCHED ✅',
-                        'Source': `Master + ${sRow.source}`,
-                        'Master Status': mRow.status,
-                        'Small File Status': sRow.status,
-                        'Duplicate Note': duplicateNote
-                    });
-                }
-            } else {
-                // MISSING (In Master but not in Small)
-                notFoundCount += mRows.length;
-                for (const mRow of mRows) {
-                    auditData.push({
-                        'Date': mRow.date,
-                        'Time Zone': mRow.tz,
-                        'Extension': mRow.ext,
-                        'Number': mRow.numberRaw,
-                        'Match Status': 'MISSING ❌',
-                        'Source': 'Master Only',
-                        'Master Status': mRow.status,
-                        'Small File Status': 'N/A',
-                        'Duplicate Note': duplicateNote
-                    });
-                }
-            }
-        }
+            const matchLimit = Math.min(mRows.length, sRows.length);
+            const missingLimit = Math.max(0, mRows.length - sRows.length);
+            const extraLimit = Math.max(0, sRows.length - mRows.length);
 
-        // Process Small -> Extra
-        for (const [num, sRows] of smallMap.entries()) {
-            if (!masterMap.has(num)) {
-                // EXTRA (In Small but not in Master)
-                extraCount += sRows.length;
-                const isDuplicateSmall = sRows.length > 1;
-                const duplicateNote = isDuplicateSmall ? 'Duplicate in Small File' : '';
+            // MATCHED
+            for (let i = 0; i < matchLimit; i++) {
+                matchedCount++;
+                const mRow = mRows[i];
+                const sRow = sRows[i];
                 
-                for (const sRow of sRows) {
-                    auditData.push({
-                        'Date': sRow.date,
-                        'Time Zone': sRow.tz,
-                        'Extension': sRow.ext,
-                        'Number': sRow.numberRaw,
-                        'Match Status': 'EXTRA ⚠️',
-                        'Source': sRow.source,
-                        'Master Status': 'N/A',
-                        'Small File Status': sRow.status,
-                        'Duplicate Note': duplicateNote
-                    });
-                }
+                auditData.push({
+                    'Date': mRow.date || sRow.date,
+                    'Time': mRow.time || sRow.time,
+                    'Time Zone': mRow.tz || sRow.tz,
+                    'Extension': mRow.ext || sRow.ext,
+                    'Number': mRow.numberRaw || sRow.numberRaw,
+                    'Match Status': 'MATCHED ✅',
+                    'Source': `Master + ${sRow.source}`,
+                    'Master Status': mRow.status,
+                    'Small File Status': sRow.status,
+                    'Duplicate Note': duplicateNote
+                });
+            }
+
+            // MISSING (In Master but not paired with Small)
+            for (let i = matchLimit; i < matchLimit + missingLimit; i++) {
+                notFoundCount++;
+                const mRow = mRows[i];
+                
+                auditData.push({
+                    'Date': mRow.date,
+                    'Time': mRow.time,
+                    'Time Zone': mRow.tz,
+                    'Extension': mRow.ext,
+                    'Number': mRow.numberRaw,
+                    'Match Status': 'MISSING ❌',
+                    'Source': 'Master Only',
+                    'Master Status': mRow.status,
+                    'Small File Status': 'N/A',
+                    'Duplicate Note': duplicateNote
+                });
+            }
+
+            // EXTRA (In Small but not paired with Master)
+            for (let i = matchLimit; i < matchLimit + extraLimit; i++) {
+                extraCount++;
+                const sRow = sRows[i];
+                
+                auditData.push({
+                    'Date': sRow.date,
+                    'Time': sRow.time,
+                    'Time Zone': sRow.tz,
+                    'Extension': sRow.ext,
+                    'Number': sRow.numberRaw,
+                    'Match Status': 'EXTRA ⚠️',
+                    'Source': sRow.source,
+                    'Master Status': 'N/A',
+                    'Small File Status': sRow.status,
+                    'Duplicate Note': duplicateNote
+                });
             }
         }
 
