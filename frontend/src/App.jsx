@@ -9,10 +9,8 @@ function App() {
   const [error, setError] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [filterStatus, setFilterStatus] = useState('');
-  const [filterDateStart, setFilterDateStart] = useState('');
-  const [filterDateEnd, setFilterDateEnd] = useState('');
-  const [filterTimeStart, setFilterTimeStart] = useState('');
-  const [filterTimeEnd, setFilterTimeEnd] = useState('');
+  const [filterDateTimeStart, setFilterDateTimeStart] = useState('');
+  const [filterDateTimeEnd, setFilterDateTimeEnd] = useState('');
   const [filterExt, setFilterExt] = useState('');
   const [filterTz, setFilterTz] = useState('');
   // Validation State
@@ -668,10 +666,8 @@ function App() {
                       <option value="MISSING">Missing</option>
                       <option value="EXTRA">Extra</option>
                   </select>
-                  <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} title="Start Date" />
-                  <input type="date" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} title="End Date" />
-                  <input type="time" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTimeStart} onChange={e => setFilterTimeStart(e.target.value)} title="Start Time" />
-                  <input type="time" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTimeEnd} onChange={e => setFilterTimeEnd(e.target.value)} title="End Time" />
+                  <input type="datetime-local" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateTimeStart} onChange={e => setFilterDateTimeStart(e.target.value)} title="Start Date and Time" />
+                  <input type="datetime-local" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateTimeEnd} onChange={e => setFilterDateTimeEnd(e.target.value)} title="End Date and Time" />
                   <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Extensions (e.g. 1804, 2435)" />
                   
                   <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)}>
@@ -705,20 +701,23 @@ function App() {
                     .filter(row => {
                         if (filterStatus && (!row['Match Status'] || !row['Match Status'].includes(filterStatus))) return false;
                         
-                        // Date Range Filter
-                        if (filterDateStart || filterDateEnd) {
+                        // Date-Time Range Filter
+                        if (filterDateTimeStart || filterDateTimeEnd) {
                             if (!row['Date']) return false;
-                            const rowDate = new Date(row['Date']);
-                            if (filterDateStart && rowDate < new Date(filterDateStart)) return false;
-                            if (filterDateEnd && rowDate > new Date(new Date(filterDateEnd).setHours(23, 59, 59))) return false;
-                        }
-                        
-                        // Time Range Filter
-                        if (filterTimeStart || filterTimeEnd) {
-                            if (!row['Time']) return false;
-                            const rowTime = String(row['Time']).substring(0, 5); // Ensure HH:mm format for comparison
-                            if (filterTimeStart && rowTime < filterTimeStart) return false;
-                            if (filterTimeEnd && rowTime > filterTimeEnd) return false;
+                            
+                            const rowDateStr = row['Date'];
+                            const rowTimeStr = row['Time'] || '00:00';
+                            const rowDateTime = new Date(`${rowDateStr}T${rowTimeStr}`);
+                            
+                            if (filterDateTimeStart) {
+                                const start = new Date(filterDateTimeStart);
+                                if (rowDateTime < start) return false;
+                            }
+                            
+                            if (filterDateTimeEnd) {
+                                const end = new Date(filterDateTimeEnd);
+                                if (rowDateTime > end) return false;
+                            }
                         }
 
                         // Multiple Extensions Filter
