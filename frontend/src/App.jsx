@@ -12,7 +12,7 @@ function App() {
   const [filterDateTimeStart, setFilterDateTimeStart] = useState('');
   const [filterDateTimeEnd, setFilterDateTimeEnd] = useState('');
   const [filterExt, setFilterExt] = useState('');
-  const [filterTz, setFilterTz] = useState('');
+  const [selectedTimezone, setSelectedTimezone] = useState('Asia/Kolkata');
   // Validation State
   const [mode, setMode] = useState('reconcile'); // 'reconcile' | 'validate'
   const [validationFile, setValidationFile] = useState(null);
@@ -670,17 +670,17 @@ function App() {
                   <input type="datetime-local" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateTimeEnd} onChange={e => setFilterDateTimeEnd(e.target.value)} title="End Date and Time" />
                   <input type="text" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterExt} onChange={e => setFilterExt(e.target.value)} placeholder="Extensions (e.g. 1804, 2435)" />
                   
-                  <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterTz} onChange={e => setFilterTz(e.target.value)}>
-                      <option value="">All Time Zones</option>
-                      <option value="USA/Canada - Eastern">US Eastern (EDT/EST)</option>
-                      <option value="USA/Canada - Central">US Central (CDT/CST)</option>
-                      <option value="USA/Canada - Mountain">US Mountain (MDT/MST)</option>
-                      <option value="USA/Canada - Pacific">US Pacific (PDT/PST)</option>
-                      <option value="United Kingdom">United Kingdom (GMT/BST)</option>
-                      <option value="Central Europe">Central Europe (CET/CEST)</option>
-                      <option value="India">India (IST)</option>
-                      <option value="Australia">Australia</option>
-                      <option value="Africa">Africa</option>
+                  <select className="border border-gray-300 rounded px-3 py-1.5 text-sm font-medium text-indigo-700 bg-indigo-50" value={selectedTimezone} onChange={e => setSelectedTimezone(e.target.value)}>
+                      <option value="Asia/Kolkata">India - Asia/Kolkata</option>
+                      <option value="America/New_York">USA New York - America/New_York</option>
+                      <option value="America/Los_Angeles">USA Los Angeles - America/Los_Angeles</option>
+                      <option value="Europe/London">UK London - Europe/London</option>
+                      <option value="Asia/Dubai">UAE Dubai - Asia/Dubai</option>
+                      <option value="Asia/Singapore">Singapore - Asia/Singapore</option>
+                      <option value="Asia/Tokyo">Japan Tokyo - Asia/Tokyo</option>
+                      <option value="Europe/Berlin">Germany Berlin - Europe/Berlin</option>
+                      <option value="Australia/Sydney">Australia Sydney - Australia/Sydney</option>
+                      <option value="UTC">UTC</option>
                   </select>
               </div>
             </div>
@@ -689,11 +689,16 @@ function App() {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead className="bg-gray-100 sticky top-0 z-10 shadow-sm">
                     <tr>
-                      {Object.keys(previewFile.previewData[0]).map((key, i) => (
+                      {Object.keys(previewFile.previewData[0]).map((key, i) => {
+                        if (key === 'Date' || key === 'Time' || key === 'Time Zone') return null;
+                        return (
                         <th key={i} className="p-3 font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">
                           {key}
                         </th>
-                      ))}
+                        );
+                      })}
+                      <th className="p-3 font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">Selected Timezone</th>
+                      <th className="p-3 font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">Local Call Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -707,17 +712,24 @@ function App() {
                             
                             const rowDateStr = row['Date'];
                             const rowTimeStr = row['Time'] || '00:00';
-                            const rowDateTime = new Date(`${rowDateStr}T${rowTimeStr}`);
+                            const utcDate = new Date(`${rowDateStr}T${rowTimeStr}Z`);
+                            if (isNaN(utcDate)) return false;
                             
-                            if (filterDateTimeStart) {
-                                const start = new Date(filterDateTimeStart);
-                                if (rowDateTime < start) return false;
-                            }
+                            // Format to YYYY-MM-DDTHH:mm based on selected timezone
+                            const tzFormatter = new Intl.DateTimeFormat('en-US', { 
+                                timeZone: selectedTimezone,
+                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                hour: '2-digit', minute: '2-digit', hour12: false
+                            });
                             
-                            if (filterDateTimeEnd) {
-                                const end = new Date(filterDateTimeEnd);
-                                if (rowDateTime > end) return false;
-                            }
+                            const parts = tzFormatter.formatToParts(utcDate);
+                            const p = {};
+                            parts.forEach(part => p[part.type] = part.value);
+                            const localHour = p.hour === '24' ? '00' : p.hour;
+                            const localIsoStr = `${p.year}-${p.month}-${p.day}T${localHour}:${p.minute}`;
+                            
+                            if (filterDateTimeStart && localIsoStr < filterDateTimeStart) return false;
+                            if (filterDateTimeEnd && localIsoStr > filterDateTimeEnd) return false;
                         }
 
                         // Multiple Extensions Filter
@@ -728,7 +740,6 @@ function App() {
                             if (extensions.length > 0 && !extensions.some(ext => rowExt.includes(ext) || ext.includes(rowExt))) return false;
                         }
 
-                        if (filterTz && (!row['Time Zone'] || !String(row['Time Zone']).toLowerCase().includes(filterTz.toLowerCase()))) return false;
                         return true;
                     })
                     .map((row, i) => (
@@ -736,14 +747,32 @@ function App() {
                         key={i} 
                         className={`hover:bg-gray-50 transition-colors ${row['Match Status']?.includes('MATCHED') ? 'bg-green-50/30' : row['Match Status']?.includes('MISSING') ? 'bg-red-50/30' : row['Match Status']?.includes('EXTRA') ? 'bg-yellow-50/30' : ''}`}
                       >
-                        {Object.keys(previewFile.previewData[0]).map((key, j) => (
+                        {Object.keys(previewFile.previewData[0]).map((key, j) => {
+                          if (key === 'Date' || key === 'Time' || key === 'Time Zone') return null;
+                          return (
                           <td 
                             key={j} 
                             className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key]?.includes('MATCHED') ? 'text-green-700 font-bold' : row[key]?.includes('MISSING') ? 'text-red-700 font-bold' : row[key]?.includes('EXTRA') ? 'text-yellow-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
                           >
                             {row[key]}
                           </td>
-                        ))}
+                          );
+                        })}
+                        <td className="p-3 whitespace-nowrap font-medium text-indigo-600">{selectedTimezone}</td>
+                        <td className="p-3 whitespace-nowrap font-bold text-gray-800">
+                           {(() => {
+                               if (!row['Date']) return '';
+                               const t = row['Time'] || '00:00';
+                               const d = new Date(`${row['Date']}T${t}Z`);
+                               if (isNaN(d)) return `${row['Date']} ${t}`;
+                               return new Intl.DateTimeFormat('en-GB', {
+                                   day: '2-digit', month: 'short', year: 'numeric',
+                                   hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                   timeZone: selectedTimezone === 'UTC' ? 'UTC' : selectedTimezone,
+                                   timeZoneName: 'short'
+                               }).format(d);
+                           })()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
