@@ -149,7 +149,11 @@ app.post('/api/match', upload.fields([
 
         const sanitizeId = (id) => {
             if (id === undefined || id === null) return '';
-            return String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+            let cleaned = String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (/^\d+$/.test(cleaned) && cleaned.length > 10) {
+                return cleaned.slice(-10);
+            }
+            return cleaned;
         };
 
         const getKeys = (row) => {
