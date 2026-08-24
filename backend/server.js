@@ -514,7 +514,11 @@ app.post('/api/validate-numbers', upload.single('sheet'), async (req, res) => {
         // Save to Active Log
         let existingLog = [];
         if (fs.existsSync(LOG_FILE)) {
-            existingLog = JSON.parse(fs.readFileSync(LOG_FILE, 'utf8'));
+            try {
+                existingLog = JSON.parse(fs.readFileSync(LOG_FILE, 'utf8'));
+            } catch (e) {
+                console.error('Failed to parse validation log, starting fresh:', e);
+            }
         }
         existingLog = [...logEntries, ...existingLog].slice(0, 500); // Keep last 500
         fs.writeFileSync(LOG_FILE, JSON.stringify(existingLog, null, 2));
@@ -573,7 +577,7 @@ app.post('/api/validate-numbers', upload.single('sheet'), async (req, res) => {
 
     } catch (error) {
         console.error('Error validating numbers:', error);
-        res.status(500).json({ error: 'Failed to validate numbers.' });
+        res.status(500).json({ error: `Failed to validate numbers: ${error.message}` });
     }
 });
 
