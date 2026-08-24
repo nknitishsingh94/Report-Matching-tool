@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2026-08-24T19:35:11.852Z",
+    "phone": 13175578549,
+    "type": "fixed_line",
+    "carrier": "Mock Carrier"
+  },
+  {
+    "timestamp": "2026-08-24T19:35:11.852Z",
+    "phone": 18047201389,
+    "type": "fixed_line",
+    "carrier": "Mock Carrier"
+  },
+  {
+    "timestamp": "2026-08-24T19:35:11.852Z",
+    "phone": 16023775134,
+    "type": "mobile",
+    "carrier": "Mock Carrier"
+  },
+  {
+    "timestamp": "2026-08-24T19:34:45.154Z",
+    "phone": 13175578549,
+    "type": "voip",
+    "carrier": "Mock Carrier"
+  }
+]

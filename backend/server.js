@@ -177,27 +177,27 @@ app.post('/api/match', upload.fields([
             return { callerIdKey, dateKey, extKey, statusKey, tzKey, timeKey };
         };
 
-        // Parse Master File
         const masterWorkbook = xlsx.read(masterFile.buffer, { type: 'buffer', cellDates: true });
         const masterSheetName = masterWorkbook.SheetNames[0];
         const masterData = xlsx.utils.sheet_to_json(masterWorkbook.Sheets[masterSheetName], { defval: "" });
 
         const masterMap = new Map();
-        for (const row of masterData) {
-            const keys = getKeys(row);
-            const num = sanitizeId(row[keys.callerIdKey]);
-            if (num) {
-                if (!masterMap.has(num)) masterMap.set(num, []);
-                masterMap.get(num).push({
-                    original: row,
-                    date: normalizeDate(row[keys.dateKey]),
+        if (masterData.length > 0) {
+            const keys = getKeys(masterData[0]);
+            for (const row of masterData) {
+                const num = sanitizeId(row[keys.callerIdKey]);
+                if (num) {
+                    if (!masterMap.has(num)) masterMap.set(num, []);
+                    masterMap.get(num).push({
+                        original: row,
+                        date: normalizeDate(row[keys.dateKey]),
                         time: (keys.timeKey && row[keys.timeKey]) ? normalizeTime(row[keys.timeKey]) : normalizeTime(row[keys.dateKey]),
-                    time: (keys.timeKey && row[keys.timeKey]) ? normalizeTime(row[keys.timeKey]) : normalizeTime(row[keys.dateKey]),
-                    ext: row[keys.extKey] || '',
-                    status: row[keys.statusKey] || '',
-                    numberRaw: row[keys.callerIdKey],
-                    tz: mapTimeZone(row[keys.tzKey] || '')
-                });
+                        ext: row[keys.extKey] || '',
+                        status: row[keys.statusKey] || '',
+                        numberRaw: row[keys.callerIdKey],
+                        tz: mapTimeZone(row[keys.tzKey] || '')
+                    });
+                }
             }
         }
 
@@ -215,20 +215,22 @@ app.post('/api/match', upload.fields([
             
             smallFilesData.push({ originalName, data: smallData, label });
 
-            for (const row of smallData) {
-                const keys = getKeys(row);
-                const num = sanitizeId(row[keys.callerIdKey]);
-                if (num) {
-                    if (!smallMap.has(num)) smallMap.set(num, []);
-                    smallMap.get(num).push({
-                        original: row,
-                        date: normalizeDate(row[keys.dateKey]),
-                        ext: row[keys.extKey] || '',
-                        status: row[keys.statusKey] || '',
-                        numberRaw: row[keys.callerIdKey],
-                        source: label,
-                        tz: mapTimeZone(row[keys.tzKey] || '')
-                    });
+            if (smallData.length > 0) {
+                const keys = getKeys(smallData[0]);
+                for (const row of smallData) {
+                    const num = sanitizeId(row[keys.callerIdKey]);
+                    if (num) {
+                        if (!smallMap.has(num)) smallMap.set(num, []);
+                        smallMap.get(num).push({
+                            original: row,
+                            date: normalizeDate(row[keys.dateKey]),
+                            ext: row[keys.extKey] || '',
+                            status: row[keys.statusKey] || '',
+                            numberRaw: row[keys.callerIdKey],
+                            source: label,
+                            tz: mapTimeZone(row[keys.tzKey] || '')
+                        });
+                    }
                 }
             }
         }
@@ -350,6 +352,14 @@ app.post('/api/match', upload.fields([
         
         // 1. Create Audit Report Sheet
         const auditSheet = newWorkbook.addWorksheet('Audit Report');
+        
+        const fillMatched = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+        const fontMatched = { color: { argb: 'FF006100' } };
+        const fillUnmatched = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        const fontUnmatched = { color: { argb: 'FF9C0006' } };
+        const fillExtra = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } };
+        const fontExtra = { color: { argb: 'FF9C6500' } };
+
         if (auditData.length > 0) {
             const headers = Object.keys(auditData[0]);
             auditSheet.columns = headers.map(header => ({ header: header, key: header, width: 22 }));
@@ -357,11 +367,11 @@ app.post('/api/match', upload.fields([
             auditData.forEach(rowData => {
                 const row = auditSheet.addRow(rowData);
                 if (rowData['Match Status'] === 'MATCHED ✅') {
-                    row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; cell.font = { color: { argb: 'FF006100' } }; });
+                    row.eachCell((cell) => { cell.fill = fillMatched; cell.font = fontMatched; });
                 } else if (rowData['Match Status'] === 'UNMATCHED ❌') {
-                    row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; cell.font = { color: { argb: 'FF9C0006' } }; });
+                    row.eachCell((cell) => { cell.fill = fillUnmatched; cell.font = fontUnmatched; });
                 } else if (rowData['Match Status'] === 'EXTRA ⚠️') {
-                    row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } }; cell.font = { color: { argb: 'FF9C6500' } }; });
+                    row.eachCell((cell) => { cell.fill = fillExtra; cell.font = fontExtra; });
                 }
             });
             auditSheet.getRow(1).font = { bold: true };
@@ -394,9 +404,9 @@ app.post('/api/match', upload.fields([
                 report.data.forEach(rowData => {
                     const row = sfSheet.addRow(rowData);
                     if (rowData['Match Status'] === 'MATCHED ✅') {
-                        row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; cell.font = { color: { argb: 'FF006100' } }; });
+                        row.eachCell((cell) => { cell.fill = fillMatched; cell.font = fontMatched; });
                     } else if (rowData['Match Status'] === 'UNMATCHED ❌') {
-                        row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; cell.font = { color: { argb: 'FF9C0006' } }; });
+                        row.eachCell((cell) => { cell.fill = fillUnmatched; cell.font = fontUnmatched; });
                     }
                 });
                 sfSheet.getRow(1).font = { bold: true };
@@ -517,17 +527,22 @@ app.post('/api/validate-numbers', upload.single('sheet'), async (req, res) => {
             const headers = Object.keys(data[0]);
             updatedSheet.columns = headers.map(header => ({ header: header, key: header, width: 20 }));
             
+            const fillVoip = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+            const fontVoip = { color: { argb: 'FF9C0006' } };
+            const fillOther = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+            const fontOther = { color: { argb: 'FF006100' } };
+
             data.forEach(rowData => {
                 const row = updatedSheet.addRow(rowData);
                 if (rowData['Line Type'] === 'voip') {
                     row.eachCell(cell => {
-                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; // Light red for VoIP
-                        cell.font = { color: { argb: 'FF9C0006' } };
+                        cell.fill = fillVoip;
+                        cell.font = fontVoip;
                     });
                 } else {
                     row.eachCell(cell => {
-                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; // Light green for others
-                        cell.font = { color: { argb: 'FF006100' } };
+                        cell.fill = fillOther;
+                        cell.font = fontOther;
                     });
                 }
             });
