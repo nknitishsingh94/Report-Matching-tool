@@ -229,6 +229,18 @@ app.post('/api/match', upload.fields([
             }
         }
 
+        // Track small file reports
+        const smallFileReports = {};
+        for (let i = 0; i < smallFiles.length; i++) {
+            const label = labels[i] || `File ${i + 1}`;
+            smallFileReports[label] = {
+                originalName: smallFiles[i].originalname || label,
+                matched: 0,
+                notFound: 0, // Unmatched
+                data: []
+            };
+        }
+
         const auditData = [];
         let matchedCount = 0;
         let notFoundCount = 0; // Missing
@@ -270,6 +282,15 @@ app.post('/api/match', upload.fields([
                     'Small File Status': sRow.status,
                     'Duplicate Note': duplicateNote
                 });
+
+                if (smallFileReports[sRow.source]) {
+                    smallFileReports[sRow.source].matched++;
+                    smallFileReports[sRow.source].data.push({
+                        ...sRow.original,
+                        'Match Status': 'MATCHED ✅',
+                        'Duplicate Note': duplicateNote
+                    });
+                }
             }
 
             // MISSING (In Master but not paired with Small)
@@ -308,6 +329,15 @@ app.post('/api/match', upload.fields([
                     'Small File Status': sRow.status,
                     'Duplicate Note': duplicateNote
                 });
+
+                if (smallFileReports[sRow.source]) {
+                    smallFileReports[sRow.source].notFound++;
+                    smallFileReports[sRow.source].data.push({
+                        ...sRow.original,
+                        'Match Status': 'UNMATCHED ❌',
+                        'Duplicate Note': duplicateNote
+                    });
+                }
             }
         }
 
@@ -347,6 +377,44 @@ app.post('/api/match', upload.fields([
             previewData: auditData
         };
 
+        // Generate small files reports
+        const smallFilesResponse = [];
+        for (const [label, report] of Object.entries(smallFileReports)) {
+            const sfWorkbook = new ExcelJS.Workbook();
+            const sfSheet = sfWorkbook.addWorksheet('Report');
+            
+            if (report.data.length > 0) {
+                const headers = Object.keys(report.data[0]);
+                sfSheet.columns = headers.map(header => ({ header: header, key: header, width: 22 }));
+                
+                report.data.forEach(rowData => {
+                    const row = sfSheet.addRow(rowData);
+                    if (rowData['Match Status'] === 'MATCHED ✅') {
+                        row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } }; cell.font = { color: { argb: 'FF006100' } }; });
+                    } else if (rowData['Match Status'] === 'UNMATCHED ❌') {
+                        row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } }; cell.font = { color: { argb: 'FF9C0006' } }; });
+                    }
+                });
+                sfSheet.getRow(1).font = { bold: true };
+                
+                sfSheet.autoFilter = {
+                    from: { row: 1, column: 1 },
+                    to: { row: report.data.length + 1, column: headers.length }
+                };
+            }
+            
+            const sfBuffer = await sfWorkbook.xlsx.writeBuffer();
+            const originalNameExt = report.originalName.includes('.') ? report.originalName.substring(0, report.originalName.lastIndexOf('.')) : report.originalName;
+            
+            smallFilesResponse.push({
+                fileName: `Audit_${originalNameExt}.xlsx`,
+                fileBase64: sfBuffer.toString('base64'),
+                previewData: report.data,
+                matched: report.matched,
+                notFound: report.notFound
+            });
+        }
+
         res.json({
             success: true,
             stats: {
@@ -356,7 +424,7 @@ app.post('/api/match', upload.fields([
                 extra: extraCount
             },
             masterFile: masterFileResponse,
-            smallFiles: [] // Deprecated annotated small files for audit mode
+            smallFiles: smallFilesResponse
         });
 
     } catch (error) {

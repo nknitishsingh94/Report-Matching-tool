@@ -745,14 +745,14 @@ function App() {
                     .map((row, i) => (
                       <tr 
                         key={i} 
-                        className={`hover:bg-gray-50 transition-colors ${row['Match Status']?.includes('MATCHED') ? 'bg-green-50/30' : row['Match Status']?.includes('MISSING') ? 'bg-red-50/30' : row['Match Status']?.includes('EXTRA') ? 'bg-yellow-50/30' : ''}`}
+                        className={`hover:bg-gray-50 transition-colors ${row['Match Status']?.includes('MATCHED ✅') ? 'bg-green-50/30' : row['Match Status']?.includes('MISSING') ? 'bg-red-50/30' : row['Match Status']?.includes('EXTRA') ? 'bg-yellow-50/30' : row['Match Status']?.includes('UNMATCHED') ? 'bg-red-50/30' : ''}`}
                       >
                         {Object.keys(previewFile.previewData[0]).map((key, j) => {
                           if (key === 'Date' || key === 'Time' || key === 'Time Zone') return null;
                           return (
                           <td 
                             key={j} 
-                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key]?.includes('MATCHED') ? 'text-green-700 font-bold' : row[key]?.includes('MISSING') ? 'text-red-700 font-bold' : row[key]?.includes('EXTRA') ? 'text-yellow-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
+                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key]?.includes('MATCHED ✅') ? 'text-green-700 font-bold' : row[key]?.includes('MISSING') ? 'text-red-700 font-bold' : row[key]?.includes('EXTRA') ? 'text-yellow-700 font-bold' : row[key]?.includes('UNMATCHED') ? 'text-red-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
                           >
                             {row[key]}
                           </td>
