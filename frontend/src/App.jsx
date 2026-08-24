@@ -381,12 +381,12 @@ function App() {
                 </div>
 
                 <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-2xl p-4 text-center border border-red-100 shadow-sm shadow-red-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
-                  <p className="text-xs text-red-700 font-bold uppercase tracking-wider mb-2 relative z-10">Missing</p>
+                  <p className="text-xs text-red-700 font-bold uppercase tracking-wider mb-2 relative z-10">Unmatched</p>
                   <p className="text-2xl font-black text-red-700 relative z-10">{result.stats.notFound}</p>
                 </div>
                 
                 <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl p-4 text-center border border-yellow-100 shadow-sm shadow-yellow-100/50 hover:shadow-md transition-shadow relative overflow-hidden">
-                  <p className="text-xs text-yellow-700 font-bold uppercase tracking-wider mb-2 relative z-10">Extra</p>
+                  <p className="text-xs text-yellow-700 font-bold uppercase tracking-wider mb-2 relative z-10">Unmatched (Small file data)</p>
                   <p className="text-2xl font-black text-yellow-700 relative z-10">{result.stats.extra || 0}</p>
                 </div>
               </div>
@@ -663,8 +663,8 @@ function App() {
                   <select className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                       <option value="">All Statuses</option>
                       <option value="MATCHED">Matched</option>
-                      <option value="MISSING">Missing</option>
-                      <option value="EXTRA">Extra</option>
+                      <option value="UNMATCHED">Unmatched</option>
+                      <option value="EXTRA">Unmatched (Small file data)</option>
                   </select>
                   <input type="datetime-local" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateTimeStart} onChange={e => setFilterDateTimeStart(e.target.value)} title="Start Date and Time" />
                   <input type="datetime-local" className="border border-gray-300 rounded px-3 py-1.5 text-sm" value={filterDateTimeEnd} onChange={e => setFilterDateTimeEnd(e.target.value)} title="End Date and Time" />
@@ -745,14 +745,14 @@ function App() {
                     .map((row, i) => (
                       <tr 
                         key={i} 
-                        className={`hover:bg-gray-50 transition-colors ${row['Match Status']?.includes('MATCHED ✅') ? 'bg-green-50/30' : row['Match Status']?.includes('MISSING') ? 'bg-red-50/30' : row['Match Status']?.includes('EXTRA') ? 'bg-yellow-50/30' : row['Match Status']?.includes('UNMATCHED') ? 'bg-red-50/30' : ''}`}
+                        className={`hover:bg-gray-50 transition-colors ${row['Match Status']?.includes('MATCHED ✅') ? 'bg-green-50/30' : row['Match Status']?.includes('UNMATCHED') ? 'bg-red-50/30' : row['Match Status']?.includes('EXTRA') ? 'bg-yellow-50/30' : ''}`}
                       >
                         {Object.keys(previewFile.previewData[0]).map((key, j) => {
                           if (key === 'Date' || key === 'Time' || key === 'Time Zone') return null;
                           return (
                           <td 
                             key={j} 
-                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key]?.includes('MATCHED ✅') ? 'text-green-700 font-bold' : row[key]?.includes('MISSING') ? 'text-red-700 font-bold' : row[key]?.includes('EXTRA') ? 'text-yellow-700 font-bold' : row[key]?.includes('UNMATCHED') ? 'text-red-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
+                            className={`p-3 whitespace-nowrap ${key === 'Match Status' ? (row[key]?.includes('MATCHED ✅') ? 'text-green-700 font-bold' : row[key]?.includes('UNMATCHED') ? 'text-red-700 font-bold' : row[key]?.includes('EXTRA') ? 'text-yellow-700 font-bold' : 'text-gray-600') : 'text-gray-600'}`}
                           >
                             {row[key]}
                           </td>
