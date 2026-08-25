@@ -4,6 +4,7 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const ExcelJS = require('exceljs');
 
 const app = express();
@@ -460,7 +461,7 @@ const getMockVeriphoneResponse = (phone) => {
     };
 };
 
-const LOG_FILE = path.join(__dirname, 'validation_log.json');
+const LOG_FILE = path.join(os.tmpdir(), 'validation_log.json');
 
 app.post('/api/validate-numbers', upload.single('sheet'), async (req, res) => {
     try {
